@@ -5,7 +5,7 @@ const wss = new WebSocket.Server({ port: 8080 });
 var gs = {
     state: 'lobby', // lobby, playing, gameover
     players:[
-        { xloc: 100, yloc: 100,  direction:"right", radius: 20, color: 'blue', name: '', isPlayer:false, isReady:false, isAlive:false},
+        { xloc: 100, yloc: 100,  direction:"right", radius: 20, color: '#95bfff', name: '', isPlayer:false, isReady:false, isAlive:false},
         { xloc: 700, yloc: 200,  direction:"right", radius: 20, color: 'red', name: '', isPlayer:false, isReady:false, isAlive:false},
         { xloc: 400, yloc: 300,  direction:"right", radius: 20, color: 'green', name: '', isPlayer:false, isReady:false, isAlive:false},
         { xloc: 1000, yloc: 400, direction:"right", radius: 20, color: 'orange', name: '', isPlayer:false, isReady:false, isAlive:false} ,
@@ -13,7 +13,7 @@ var gs = {
     ],
     colors: ['blue', 'red', 'green', 'orange', 'purple'],
     winMessage:"",
-    playerSpeed:5,
+    playerSpeed:3,
     playTime:0
 };
 
@@ -147,14 +147,14 @@ function checkForCollisions() {
 }
 
 function playerDied(player){
-    player.isAlive = false;
-    player.xloc = -1000;
-    player.yloc = -1000;
+    //player.isAlive = false;
+    //player.xloc = -1000;
+    //player.yloc = -1000;
 }
 
 function checkForGameOver(){
     var alivePlayers = gs.players.filter(player => player.isAlive);
-    if (alivePlayers.length === 1) {
+    if (alivePlayers.length === 0) { // Check to 1 for prod
         gs.state = 'gameover';
         gs.winMessage = alivePlayers[0].name + " Wins!";
     }
@@ -166,7 +166,7 @@ function checkForGameOver(){
 
 function updatePlayTime(){
     gs.playTime += 1;
-    if(gs.playTime % 100 == 0){
+    if(gs.playTime % 300 == 0){
         gs.playerSpeed += 1;
         console.log("Player Speed Increased to: " + gs.playerSpeed);
     }

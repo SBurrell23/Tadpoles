@@ -1,4 +1,4 @@
-const socket = new WebSocket('ws://localhost:8080');
+const socket = new WebSocket('ws://localhost:8080'); //stayaway.onrender.com
 socket.addEventListener('open', function () {
     socket.addEventListener('message', function (event) {
         handleServerMessage(event.data);
@@ -142,7 +142,7 @@ function updateLobby(gs){
         }
     }
     //If a player 1 exists, they are the only one who can start the game as long as someone is ready
-    if(numReadyPlayers(gs) >= 2 && playerId == 1){
+    if(numReadyPlayers(gs) >= 1 && playerId == 1){
         $('#startGameButton').prop('disabled', false);
     }else{
         $('#startGameButton').prop('disabled', true);
@@ -178,16 +178,27 @@ function drawGameState(gs, withPlayers) {
     // Clear the entire canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     // Fill the entire canvas with a background rectangle
-    ctx.fillStyle = "#202020";
+    ctx.fillStyle = "#282a2c";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     // Draw the players
-    if (withPlayers)
+    if (withPlayers){
         drawPlayers(gs, ctx);
+        drawPlayerSpeed(gs,ctx);
+    }
 
     drawSpikes(ctx, canvas.width, canvas.height, 4, "#ff0000");
 
 }
+
+function drawPlayerSpeed(gs,ctx){
+    ctx.font = '20px Arial';
+    ctx.fillStyle = 'white';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText("Level " + (gs.playerSpeed - 2), 45, 23);
+}
+
 
 function drawSpikes(ctx, canvasWidth, canvasHeight, spikeSize, spikeColor) {
     // Calculate the number of spikes needed
