@@ -28,7 +28,7 @@ function handleServerMessage(message) {
     }
     
     if(gs.state == "gameover"){
-        drawGameState(gs,true);
+        drawGameState(gs,false);
         drawGameOverText();
         handleGameOverOnce();
     }
@@ -45,10 +45,11 @@ function handleGameOverOnce(){
 
         $(playerInputId).prop('disabled', false);
         $(playerInputId).removeClass('is-valid');
-
+        
         $(playerBtnId).attr('placeholder',"Player " + playerId);
         $(playerBtnId).prop('disabled', false);
         $(playerBtnId).removeClass('btn-success').addClass('btn-outline-primary');
+        $(playerBtnId).text("Ready");
         
         socket.send(JSON.stringify({
             type:"resetGame"
@@ -78,8 +79,8 @@ function drawWelcomeText(){
     var canvasWidth = canvas.width;
     var canvasHeight = canvas.height;
 
-    ctx.font = '50px white';
-    ctx.fillStyle = 'black';
+    ctx.font = '50px Georgia';
+    ctx.fillStyle = 'white';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText('Stay Away!', canvasWidth / 2, canvasHeight / 2);
@@ -101,6 +102,7 @@ function reservePlayerSpot(gs){
         playerId = nextEmptyPlayer;
         $(inputId).prop('disabled', false);
         $(buttonId).prop('disabled', false);
+        $(buttonId).text("Ready");
     }
 }
 
@@ -113,35 +115,40 @@ function updateLobby(gs){
             var playerNum = i + 1;
             var playerInputId = '#player' + playerNum + 'Name';
             var playerBtnId = '#player' + playerNum + 'Btn';
-            
-            if(player.isReady == false){
-                if(player.isPlayer == true){
-                    $(playerInputId).val("");
-                    $(playerInputId).attr("placeholder","Player getting ready...");
-                }
-                else{
-                    $(playerInputId).attr('placeholder',"Player " + playerNum);
-                }
+
+            if(player.isPlayer == false){
+                $(playerInputId).val("");
+                $(playerInputId).attr('placeholder',"Player " + playerNum);
+                $(playerBtnId).text("Available");
                 $(playerBtnId).removeClass('btn-success').addClass('btn-outline-primary');
                 $(playerInputId).removeClass('is-valid');
                 continue;
             }
-
-            $(playerInputId).val(player.name);
-            $(playerBtnId).removeClass('btn-outline-primary').addClass('btn-success').attr('disabled', true);
-            $(playerInputId).addClass('is-valid').attr('disabled', true);
+            if(player.isPlayer == true && player.isReady == false){
+                $(playerInputId).val("");
+                $(playerInputId).attr("placeholder","Player getting ready...");
+                $(playerBtnId).text("In Lobby");
+                $(playerBtnId).removeClass('btn-success').addClass('btn-outline-primary');
+                $(playerInputId).removeClass('is-valid');
+                continue;
+            }
+            if(player.isPlayer == true && player.isReady == true){
+                $(playerInputId).val(player.name);
+                $(playerInputId).addClass('is-valid').attr('disabled', true);
+                $(playerBtnId).text("Ready");
+                $(playerBtnId).removeClass('btn-outline-primary').addClass('btn-success').attr('disabled', true);
+                continue;
+            }
         }
     }
-    //If a player 1 exists, they are the only one who cna start the game as long as someone is ready
-    if(numReadyPlayers(gs) >= 2 && playerId == 1 && gs.players[0].isReady){
+    //If a player 1 exists, they are the only one who can start the game as long as someone is ready
+    if(numReadyPlayers(gs) >= 2 && playerId == 1){
         $('#startGameButton').prop('disabled', false);
-    }
-    //If somehow you are not player 1 but the only connected player you may start the game solo
-    else if(numReadyPlayers(gs) >=2 && gs.players[playerId - 1].isReady){
-        $('#startGameButton').prop('disabled', false);
+    }else{
+        $('#startGameButton').prop('disabled', true);
     }
     //If the game is running or over disable the start button for everone else
-    else if(gs.state == "playing" || gs.state == "gameover"){
+    if(gs.state == "playing"){
         $('#startGameButton').prop('disabled', true);
     }
 }

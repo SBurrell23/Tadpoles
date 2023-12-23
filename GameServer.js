@@ -12,7 +12,9 @@ var gs = {
         { xloc: 300, yloc: 400,  direction:"right", radius: 20, color: 'purple', name: '', isPlayer:false, isReady:false, isAlive:false}
     ],
     colors: ['blue', 'red', 'green', 'orange', 'purple'],
-    winMessage:""
+    winMessage:"",
+    playerSpeed:5,
+    playTime:0
 };
 
 var defaultGameState = JSON.parse(JSON.stringify(gs));
@@ -84,6 +86,7 @@ function handleGameOver(){
         gs.players[i].xloc = defaultGameState.players[i].xloc;
         gs.players[i].yloc = defaultGameState.players[i].yloc;
     }
+    gs.playerSpeed = JSON.parse(JSON.stringify(defaultGameState.playerSpeed));
 }
 
 function resetGameState(){
@@ -91,7 +94,7 @@ function resetGameState(){
 }
 
 function updatePlayerLocations(){
-    var playerSpeed = 5;
+    var playerSpeed = gs.playerSpeed;
     var playerRadius = 20;
     for(var i = 0; i < gs.players.length; i++){
         var currPlayer = gs.players[i];
@@ -161,12 +164,21 @@ function checkForGameOver(){
     }
 }
 
+function updatePlayTime(){
+    gs.playTime += 1;
+    if(gs.playTime % 100 == 0){
+        gs.playerSpeed += 1;
+        console.log("Player Speed Increased to: " + gs.playerSpeed);
+    }
+}
+
 //Send the current game state to all clients every 100ms
 setInterval(function() {
     if(gs.state == "playing"){
         checkForCollisions();
         checkForGameOver();
         updatePlayerLocations();
+        updatePlayTime();
     }
 
     wss.clients.forEach((client) => {
