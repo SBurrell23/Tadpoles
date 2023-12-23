@@ -1,5 +1,3 @@
-<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
-<script>
 const socket = new WebSocket('ws://localhost:8080');
 socket.addEventListener('open', function () {
     socket.addEventListener('message', function (event) {
@@ -111,33 +109,3 @@ function handlePlayerMovement(e){
 $(document).keydown(function(e) {
     handlePlayerMovement(e);
 });
-
-</script>
-<style>
-#player1 {
-    position: absolute;
-    left: 20;
-    top: 100;
-}
-</style>
-<div><h4>MULTPLAYER GAME</h4></div>
-<hr>
-<canvas id="canvas" width="1200" height="500" style="border: solid 1px black;"></canvas>
-
-
-<br>
-<br>
-<br>
-
-IDEAS:
-
-DONT CRASH
-
-All players move in the last chosen direction until they hit a wall or another player.
-
-TODO
-modify movement so all players move in the chosen direction every x milliseconds... unless they change it
-
-
-Make MUSIC
-Make sound effects for, changing direction, crashing, winning, losing, etc.
