@@ -7,26 +7,82 @@ socket.addEventListener('open', function () {
 
 var globalState = null;
 var playerId = -1;
+var handleGameOverOnceFlag = true;
 
 function handleServerMessage(message) {
     var gs = JSON.parse(message);
     globalState = gs;
     //console.log(gs);
 
-    //Check user has arrived, the game is in the lobby and the player has not been assigned a player id
-    if(gs.state == 'lobby' && playerId == -1){
+    //User has arrived, if not playing assign them a spot, or else wait for the game to end
+    if(playerId == -1 && gs.state != "playing"){
         console.log("User Arrived in Lobby");
+        drawGameState(gs,false);
+        drawWelcomeText();
         reservePlayerSpot(gs);
     }
 
     if(gs.state == "playing"){
-        //Update player positions
-        drawGameState(gs);
+        handleGameOverOnceFlag = true;
+        drawGameState(gs,true);
     }
-
+    
+    if(gs.state == "gameover"){
+        drawGameState(gs,true);
+        drawGameOverText();
+        handleGameOverOnce();
+    }
+    
     //Regardless of state, update the lobby user list
     updateLobby(gs);
 
+}
+
+function handleGameOverOnce(){
+    if(handleGameOverOnceFlag){
+        var playerInputId = '#player' + playerId + 'Name';
+        var playerBtnId = '#player' + playerId + 'Btn';
+
+        $(playerInputId).prop('disabled', false);
+        $(playerInputId).removeClass('is-valid');
+
+        $(playerBtnId).attr('placeholder',"Player " + playerId);
+        $(playerBtnId).prop('disabled', false);
+        $(playerBtnId).removeClass('btn-success').addClass('btn-outline-primary');
+        
+        socket.send(JSON.stringify({
+            type:"resetGame"
+        }));
+    }
+
+    handleGameOverOnceFlag = false;
+}
+
+function drawGameOverText(){
+    var canvas = document.getElementById('canvas');
+    var ctx = canvas.getContext('2d');
+    var canvasWidth = canvas.width;
+    var canvasHeight = canvas.height;
+
+    ctx.font = '50px Georgia';
+    ctx.fillStyle = 'white';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('Game Over', canvasWidth / 2, (canvasHeight / 2) - 50);
+    ctx.fillText(globalState.winMessage, canvasWidth / 2, (canvasHeight / 2) + 40);
+}
+
+function drawWelcomeText(){
+    var canvas = document.getElementById('canvas');
+    var ctx = canvas.getContext('2d');
+    var canvasWidth = canvas.width;
+    var canvasHeight = canvas.height;
+
+    ctx.font = '50px white';
+    ctx.fillStyle = 'black';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('Stay Away!', canvasWidth / 2, canvasHeight / 2);
 }
 
 function reservePlayerSpot(gs){
@@ -54,16 +110,16 @@ function updateLobby(gs){
         var player = gs.players[i];
         //If player not the current player, update their input
         if(i != (playerId - 1)){
-
             var playerNum = i + 1;
             var playerInputId = '#player' + playerNum + 'Name';
             var playerBtnId = '#player' + playerNum + 'Btn';
             
             if(player.isReady == false){
-                if(player.isPlayer == true)
-                    $(playerInputId).val("Player getting ready...");
-                else{
+                if(player.isPlayer == true){
                     $(playerInputId).val("");
+                    $(playerInputId).attr("placeholder","Player getting ready...");
+                }
+                else{
                     $(playerInputId).attr('placeholder',"Player " + playerNum);
                 }
                 $(playerBtnId).removeClass('btn-success').addClass('btn-outline-primary');
@@ -76,9 +132,17 @@ function updateLobby(gs){
             $(playerInputId).addClass('is-valid').attr('disabled', true);
         }
     }
-    //If the user is ready and the host, enable the start game button for them only
-    if(numReadyPlayers(gs) > 0 && playerId == 1){
+    //If a player 1 exists, they are the only one who cna start the game as long as someone is ready
+    if(numReadyPlayers(gs) >= 2 && playerId == 1 && gs.players[0].isReady){
         $('#startGameButton').prop('disabled', false);
+    }
+    //If somehow you are not player 1 but the only connected player you may start the game solo
+    else if(numReadyPlayers(gs) >=2 && gs.players[playerId - 1].isReady){
+        $('#startGameButton').prop('disabled', false);
+    }
+    //If the game is running or over disable the start button for everone else
+    else if(gs.state == "playing" || gs.state == "gameover"){
+        $('#startGameButton').prop('disabled', true);
     }
 }
 
@@ -91,25 +155,104 @@ function numReadyPlayers(gs){
     return count;
 }
 
-function drawGameState(gs) { 
+//Count the number of players ready to play
+function isConnectedPlayer(gs){
+    var count = 0;
+    for (var i = 0; i < gs.players.length; i++) 
+        if (gs.players[i].isPlayer == true) 
+            count++;
+    return count;
+}
+
+function drawGameState(gs, withPlayers) {
     // Get a reference to the canvas context
     var ctx = document.getElementById('canvas').getContext('2d');
 
     // Clear the entire canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    //fill the entire canvas with a black rectangle
-    ctx.fillStyle = "#dfddff";
+    // Fill the entire canvas with a background rectangle
+    ctx.fillStyle = "#202020";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     // Draw the players
-    drawPlayers(gs,ctx);
+    if (withPlayers)
+        drawPlayers(gs, ctx);
+
+    drawSpikes(ctx, canvas.width, canvas.height, 4, "#ff0000");
+
 }
+
+function drawSpikes(ctx, canvasWidth, canvasHeight, spikeSize, spikeColor) {
+    // Calculate the number of spikes needed
+    var numSpikes = Math.ceil((canvasWidth + canvasHeight) / (2 * spikeSize));
+
+    // Draw spikes along the top border
+    for (var i = 0; i < numSpikes; i++) {
+        var x = i * (2 * spikeSize);
+        var y = 0;
+
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(x + spikeSize, y + spikeSize);
+        ctx.lineTo(x + 2 * spikeSize, y);
+        ctx.closePath();
+
+        ctx.fillStyle = spikeColor;
+        ctx.fill();
+    }
+
+    // Draw spikes along the right border
+    for (var i = 0; i < numSpikes; i++) {
+        var x = canvasWidth;
+        var y = i * (2 * spikeSize);
+
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(x - spikeSize, y + spikeSize);
+        ctx.lineTo(x, y + 2 * spikeSize);
+        ctx.closePath();
+
+        ctx.fillStyle = spikeColor;
+        ctx.fill();
+    }
+
+    // Draw spikes along the bottom border
+    for (var i = 0; i < numSpikes; i++) {
+        var x = i * (2 * spikeSize);
+        var y = canvasHeight;
+
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(x + spikeSize, y - spikeSize);
+        ctx.lineTo(x + 2 * spikeSize, y);
+        ctx.closePath();
+
+        ctx.fillStyle = spikeColor;
+        ctx.fill();
+    }
+
+    // Draw spikes along the left border
+    for (var i = 0; i < numSpikes; i++) {
+        var x = 0;
+        var y = i * (2 * spikeSize);
+
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(x + spikeSize, y + spikeSize);
+        ctx.lineTo(x, y + 2 * spikeSize);
+        ctx.closePath();
+
+        ctx.fillStyle = spikeColor;
+        ctx.fill();
+    }
+}
+
 
 function drawPlayers(gs,ctx){
     // Draw all players
     for (var i = 0; i < gs.players.length; i++) {
         var player = gs.players[i];
-        if(player.isPlayer == false){
+        if(player.isAlive == false){
             continue;
         }
         ctx.beginPath();
@@ -119,7 +262,7 @@ function drawPlayers(gs,ctx){
         ctx.closePath();
 
         // Write player name on top of the player
-        ctx.fillStyle = 'black';
+        ctx.fillStyle = 'white';
         ctx.font = 'bold 12px Arial';
         ctx.textAlign = 'center';
         ctx.fillText(player.name, player.xloc, player.yloc - player.radius - 5);
@@ -137,23 +280,38 @@ function movePlayer(direction){
 function handlePlayerMovement(e){
     switch(e.which) {
         case 37: // left arrow key
-            movePlayer("left");break;
+        case 65: // 'a' key
+            movePlayer("left");
+            break;
         case 38: // up arrow key
-            movePlayer("up");break;
+        case 87: // 'w' key
+            movePlayer("up");
+            break;
         case 39: // right arrow key
-            movePlayer("right");break;
+        case 68: // 'd' key
+            movePlayer("right");
+            break;
         case 40: // down arrow key
-            movePlayer("down"); break;
-        default: return;
+        case 83: // 's' key
+            movePlayer("down");
+            break;
+        default: 
+            return;
     }
     e.preventDefault();
 }
 
+var keys = {};
 $(document).keydown(function(e) {
-    handlePlayerMovement(e);
+    if (!keys[e.which] && globalState.state == "playing") {
+        keys[e.which] = true;
+        handlePlayerMovement(e);
+    }
+});
+$(document).keyup(function(e) {
+    keys[e.which] = false;
 });
 
-//write the on doc ready
 
 $(document).ready(function() {
     $('#startGameButton').click(function() {

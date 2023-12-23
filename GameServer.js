@@ -2,18 +2,20 @@ const WebSocket = require('ws');
 
 const wss = new WebSocket.Server({ port: 8080 });
 
-var defaultGameState = JSON.parse(JSON.stringify(gs));
-
 var gs = {
-    state: 'lobby', // lobby, playing, end
+    state: 'lobby', // lobby, playing, gameover
     players:[
-        { xloc: 100, yloc: 100,  direction:"right", radius: 20, color: 'blue', name: 'Blu', isPlayer:false, isReady:false},
-        { xloc: 700, yloc: 200,  direction:"right", radius: 20, color: 'red', name: 'Rad', isPlayer:false, isReady:false},
-        { xloc: 400, yloc: 300,  direction:"right", radius: 20, color: 'green', name: 'Gren', isPlayer:false, isReady:false},
-        { xloc: 1000, yloc: 400, direction:"right", radius: 20, color: 'orange', name: 'Orng', isPlayer:false, isReady:false} ,
-        { xloc: 300, yloc: 400,  direction:"right", radius: 20, color: 'purple', name: 'Prpl', isPlayer:false, isReady:false}
-    ]
+        { xloc: 100, yloc: 100,  direction:"right", radius: 20, color: 'blue', name: '', isPlayer:false, isReady:false, isAlive:false},
+        { xloc: 700, yloc: 200,  direction:"right", radius: 20, color: 'red', name: '', isPlayer:false, isReady:false, isAlive:false},
+        { xloc: 400, yloc: 300,  direction:"right", radius: 20, color: 'green', name: '', isPlayer:false, isReady:false, isAlive:false},
+        { xloc: 1000, yloc: 400, direction:"right", radius: 20, color: 'orange', name: '', isPlayer:false, isReady:false, isAlive:false} ,
+        { xloc: 300, yloc: 400,  direction:"right", radius: 20, color: 'purple', name: '', isPlayer:false, isReady:false, isAlive:false}
+    ],
+    colors: ['blue', 'red', 'green', 'orange', 'purple'],
+    winMessage:""
 };
+
+var defaultGameState = JSON.parse(JSON.stringify(gs));
 
 //This needs to match what is in the client
 var canvas = {
@@ -42,11 +44,19 @@ wss.on('connection', (ws) => {
         }
 
         if(message.type == "startGame"){
+            for(var i = 0; i < gs.players.length; i++){
+                if(gs.players[i].isPlayer && gs.players[i].isReady)
+                    gs.players[i].isAlive = true;
+            }
             gs.state = "playing";
         }
         
         if(message.type == "movePlayer"){
             gs.players[message.id - 1].direction = message.direction;
+        }
+
+        if(message.type == "resetGame"){
+            handleGameOver();
         }
 
     });
@@ -67,6 +77,15 @@ wss.on('connection', (ws) => {
 
 });
 
+function handleGameOver(){
+    for(var i = 0; i < gs.players.length; i++){
+        gs.players[i].isReady = false;
+        gs.players[i].direction = "right";
+        gs.players[i].xloc = defaultGameState.players[i].xloc;
+        gs.players[i].yloc = defaultGameState.players[i].yloc;
+    }
+}
+
 function resetGameState(){
     gs = JSON.parse(JSON.stringify(defaultGameState));
 }
@@ -76,25 +95,79 @@ function updatePlayerLocations(){
     var playerRadius = 20;
     for(var i = 0; i < gs.players.length; i++){
         var currPlayer = gs.players[i];
-        if(currPlayer.direction == "right" && currPlayer.xloc < canvas.width - playerRadius){
-            currPlayer.xloc += playerSpeed;
+        if(currPlayer.isAlive == false) // If a played has died, do not bother moving them.
+            continue;
+        if(currPlayer.direction == "right"){
+            if(currPlayer.xloc < canvas.width - playerRadius)
+                currPlayer.xloc += playerSpeed;
+            else
+                playerDied(currPlayer);
         }
-        if(currPlayer.direction == "left" && currPlayer.xloc > playerRadius){
-            currPlayer.xloc -= playerSpeed;
+        if(currPlayer.direction == "left"){
+            if(currPlayer.xloc > playerRadius)
+                currPlayer.xloc -= playerSpeed;
+            else
+                playerDied(currPlayer);
         }
-        if(currPlayer.direction == "up"  && currPlayer.yloc > playerRadius){
-            currPlayer.yloc -= playerSpeed;
+        if(currPlayer.direction == "up"){
+            if(currPlayer.yloc > playerRadius)
+                currPlayer.yloc -= playerSpeed;
+            else
+                playerDied(currPlayer);
         }
-        if(currPlayer.direction == "down" && currPlayer.yloc <  canvas.height - playerRadius){
-            currPlayer.yloc += playerSpeed;
+        if(currPlayer.direction == "down"){
+            if(currPlayer.yloc < canvas.height - playerRadius)
+                currPlayer.yloc += playerSpeed;
+            else
+                playerDied(currPlayer);
         }
+    }
+}
+
+function checkForCollisions() {
+    for (var i = 0; i < gs.players.length; i++) {
+        for (var j = i + 1; j < gs.players.length; j++) {
+            var player1 = gs.players[i];
+            var player2 = gs.players[j];
+            if(player1.isAlive == false || player2.isAlive == false)
+                continue;
+            var dx = player1.xloc - player2.xloc;
+            var dy = player1.yloc - player2.yloc;
+            var distance = Math.sqrt(dx * dx + dy * dy);
+            if (distance < player1.radius + player2.radius) {
+                console.log("Collision Detected: " + player1.name + " and " + player2.name + " have collided!");
+                playerDied(player1);
+                playerDied(player2);
+            }
+        }
+    }
+}
+
+function playerDied(player){
+    player.isAlive = false;
+    player.xloc = -1000;
+    player.yloc = -1000;
+}
+
+function checkForGameOver(){
+    var alivePlayers = gs.players.filter(player => player.isAlive);
+    if (alivePlayers.length === 1) {
+        gs.state = 'gameover';
+        gs.winMessage = alivePlayers[0].name + " Wins!";
+    }
+    if (alivePlayers.length === 0) {
+        gs.state = 'gameover';
+        gs.winMessage = "Nobody Wins!";
     }
 }
 
 //Send the current game state to all clients every 100ms
 setInterval(function() {
-    if(gs.state == "playing")
+    if(gs.state == "playing"){
+        checkForCollisions();
+        checkForGameOver();
         updatePlayerLocations();
+    }
 
     wss.clients.forEach((client) => {
         if (client.readyState === WebSocket.OPEN) {
