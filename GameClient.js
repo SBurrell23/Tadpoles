@@ -177,22 +177,9 @@ function numReadyPlayers(gs){
     return count;
 }
 
-//Count the number of players ready to play
-function isConnectedPlayer(gs){
-    var count = 0;
-    for (var i = 0; i < gs.players.length; i++) 
-        if (gs.players[i].isPlayer == true) 
-            count++;
-    return count;
-}
-
 function drawGameState(gs) {
     // Get a reference to the canvas context
     var ctx = document.getElementById('canvas').getContext('2d');
-
-    // Clear the entire canvas
-    //ctx.clearRect(0, 0, canvas.width, canvas.height);
-    // Fill the entire canvas with a background rectangle
 
     ctx.fillStyle = 'rgba(44, 41, 42, 1)';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -205,7 +192,7 @@ function drawGameState(gs) {
         drawLevel(gs,ctx);
     }
 
-    drawSpikes(ctx, canvas.width, canvas.height, 4, "#ff0000");
+    drawSpikes(ctx, canvas.width, canvas.height, 4, "#ff2626");
 }
 
 
@@ -214,9 +201,8 @@ function drawLevel(gs,ctx){
     ctx.fillStyle = 'white';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText("Level " + (gs.enemy.speed - 3), 45, 23);
+    ctx.fillText("Level " + (gs.enemy.speed - 1), 45, 23);
 }
-
 
 function drawSpikes(ctx, canvasWidth, canvasHeight, spikeSize, spikeColor) {
     // Calculate the number of spikes needed
@@ -335,7 +321,7 @@ function drawPlayers(gs, ctx) {
         }
         for (var j = 0; j < previousPositions[i].length; j++) {
             var pos = previousPositions[i][j];
-            var alpha = 0.25 * (j / previousPositions[i].length); // Adjust alpha as needed
+            var alpha = .25 * (j / previousPositions[i].length); // Adjust alpha as needed
             var color = player.color.replace(')', ', ' + alpha + ')').replace('rgb', 'rgba');
             ctx.fillStyle = color;
             ctx.beginPath();

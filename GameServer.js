@@ -5,19 +5,19 @@ const wss = new WebSocket.Server({ port: 8080 });
 var gs = {
     state: 'lobby', // lobby, playing, gameover
     players:[
-        { xloc: (200-20), yloc: 100,  direction:"down", radius: 15, color: 'rgb(149, 191, 255)', name: '', isPlayer:false, isReady:false, isAlive:false},
-        { xloc: (1000-20),yloc: 100,  direction:"down", radius: 15, color: 'rgb(255, 0, 255)', name: '', isPlayer:false, isReady:false, isAlive:false},
-        { xloc: (400-20), yloc: 100,  direction:"down", radius: 15, color: 'green', name: '', isPlayer:false, isReady:false, isAlive:false},
-        { xloc: (800-20), yloc: 100,  direction:"down", radius: 15, color: 'orange', name: '', isPlayer:false, isReady:false, isAlive:false} ,
-        { xloc: (600-20), yloc: 100,  direction:"down", radius: 15, color: 'purple', name: '', isPlayer:false, isReady:false, isAlive:false}
+        { xloc: (200-10), yloc: 100,  direction:"down", radius: 15, color: 'rgb(10, 87, 209)', name: '', isPlayer:false, isReady:false, isAlive:false},
+        { xloc: (1000-10),yloc: 100,  direction:"down", radius: 15, color: 'rgb(62, 212, 57)', name: '', isPlayer:false, isReady:false, isAlive:false},
+        { xloc: (400-10), yloc: 100,  direction:"down", radius: 15, color: 'rgb(224, 170, 34)', name: '', isPlayer:false, isReady:false, isAlive:false},
+        { xloc: (800-10), yloc: 100,  direction:"down", radius: 15, color: 'rgb(175, 87, 247)', name: '', isPlayer:false, isReady:false, isAlive:false} ,
+        { xloc: (600-10), yloc: 100,  direction:"down", radius: 15, color: 'rgb(245, 51, 219)', name: '', isPlayer:false, isReady:false, isAlive:false}
     ],
     enemy:{
         xloc: 600, 
         yloc: 480,  
         direction:"up", 
-        radius: 35, color: 'rgb(255, 0, 0)', 
+        radius: 35, color: 'rgb(255, 48, 48)', 
         name: 'X  X',
-        speed:4,
+        speed:2,
         direction: getRandomDiagonalDirection()
     },
     colors: ['blue', 'red', 'green', 'orange', 'purple'],
