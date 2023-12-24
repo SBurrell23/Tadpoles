@@ -5,11 +5,11 @@ const wss = new WebSocket.Server({ port: 8080 });
 var gs = {
     state: 'lobby', // lobby, playing, gameover
     players:[
-        { xloc: (200 - 10), yloc: 100, isKing:false, speed: 6, direction: "down", radius: 10, color: 'rgb(10, 87, 209)',  name: '', isPlayer: false, isReady: false, isAlive: false },
-        { xloc: (1000 - 10),yloc: 100, isKing:false, speed: 6, direction: "down", radius: 10, color: 'rgb(62, 212, 57)',  name: '', isPlayer: false, isReady: false, isAlive: false },
-        { xloc: (400 - 10), yloc: 100, isKing:false, speed: 6, direction: "down", radius: 10, color: 'rgb(224, 170, 34)', name: '', isPlayer: false, isReady: false, isAlive: false },
-        { xloc: (800 - 10), yloc: 100, isKing:false, speed: 6, direction: "down", radius: 10, color: 'rgb(175, 87, 247)', name: '', isPlayer: false, isReady: false, isAlive: false },
-        { xloc: (600 - 10), yloc: 100, isKing:false, speed: 6, direction: "down", radius: 10, color: 'rgb(245, 51, 219)', name: '', isPlayer: false, isReady: false, isAlive: false }
+        { xloc: (200 - 10), yloc: 100, flysEaten:0, isKing:false, speed: 6, direction: "down", radius: 10, color: 'rgb(10, 87, 209)',  name: '', isPlayer: false, isReady: false, isAlive: false },
+        { xloc: (1000 - 10),yloc: 100, flysEaten:0, isKing:false, speed: 6, direction: "down", radius: 10, color: 'rgb(62, 212, 57)',  name: '', isPlayer: false, isReady: false, isAlive: false },
+        { xloc: (400 - 10), yloc: 100, flysEaten:0, isKing:false, speed: 6, direction: "down", radius: 10, color: 'rgb(224, 170, 34)', name: '', isPlayer: false, isReady: false, isAlive: false },
+        { xloc: (800 - 10), yloc: 100, flysEaten:0, isKing:false, speed: 6, direction: "down", radius: 10, color: 'rgb(175, 87, 247)', name: '', isPlayer: false, isReady: false, isAlive: false },
+        { xloc: (600 - 10), yloc: 100, flysEaten:0, isKing:false, speed: 6, direction: "down", radius: 10, color: 'rgb(245, 51, 219)', name: '', isPlayer: false, isReady: false, isAlive: false }
     ],
     enemy:{
         xloc: 600, 
@@ -101,8 +101,12 @@ function handleGameOver(){
     for(var i = 0; i < gs.players.length; i++){
         gs.players[i].isReady = false;
         gs.players[i].direction = "down";
+        gs.players[i].isKing = "false";
+        gs.players[i].flysEaten = 0;
         gs.players[i].xloc = defaultGameState.players[i].xloc;
         gs.players[i].yloc = defaultGameState.players[i].yloc;
+        gs.players[i].speed = defaultGameState.players[i].speed;
+        gs.players[i].radius = defaultGameState.players[i].radius;
     }
     gs.playTime = 0;
     gs.enemy = JSON.parse(JSON.stringify(defaultGameState.enemy)); 
@@ -249,9 +253,21 @@ function checkIfPlayerCollidedWithFly(player) {
         var dy = player.yloc - gs.fly.yloc;
         var distance = Math.sqrt(dx * dx + dy * dy);
         if (distance < player.radius + gs.fly.radius) {
-            console.log(player.name + " has collided with the fly!");
+            console.log(player.name + " has eaten the fly!");
             gs.fly.isAlive = false;
             gs.fly.lastDeathTime =  gs.playTime;
+            playerAteFly(player);
+        }
+    }
+}
+
+function playerAteFly(player){
+    player.flysEaten += 1;
+    player.radius += 3;
+    if (player.flysEaten > 0) {
+        var maxFliesEaten = Math.max(...gs.players.map(player => player.flysEaten));
+        if (player.flysEaten >= maxFliesEaten) {
+            player.isKing = true;
         }
     }
 }
@@ -275,18 +291,19 @@ function checkForGameOver(){
     }
 }
 
-//Spawns the fly periodically after its last death.
-//The fly only spawns if there are no players within 100 pixels of it.
+//Spawns the fly periodically after its last death where no players are nearby
 function spawnFly(){
-    var secondToSpawnFlyAfterLastDeath = 3;
+    var secondToSpawnFlyAfterLastDeath = 3; // Seconds to spawn the fly after its last death.
+    var flySpawnMargin = 25; // Cannot spawn this close to edge.
+    var playerRadius = 125; // Cannot spawn this close to a player.
+
     if (!gs.fly.isAlive && gs.playTime - gs.fly.lastDeathTime >= (60 * secondToSpawnFlyAfterLastDeath)) {
-        var playerRadius = 100;
         var validSpawn = false;
         var flyX, flyY;
 
         while (!validSpawn) {
-            flyX = Math.random() * canvas.width;
-            flyY = Math.random() * canvas.height;
+            flyX = Math.random() * (canvas.width - 2 * flySpawnMargin) + flySpawnMargin; 
+            flyY = Math.random() * (canvas.height - 2 * flySpawnMargin) + flySpawnMargin;
 
             validSpawn = true;
             for (var i = 0; i < gs.players.length; i++) {

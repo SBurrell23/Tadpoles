@@ -185,9 +185,9 @@ function drawGameState(gs) {
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     // Draw the players
+    drawFly(gs, ctx);
     drawPlayers(gs, ctx);
     drawEnemy(gs, ctx);
-    drawFly(gs, ctx);
 
     if (gs.state != "lobby"){
         drawLevel(gs,ctx);
@@ -283,18 +283,45 @@ function drawPlayers(gs, ctx) {
         ctx.fillStyle = player.color;
         ctx.fill();
         ctx.closePath();
+        
+        if(player.isKing){
+            // Calculate the crown size based on the player's radius
+            var crownSize = player.radius * 0.5;
+            // Draw the crown points
+            ctx.fillStyle = 'yellow';
+            ctx.beginPath();
+            ctx.moveTo(player.xloc - crownSize, player.yloc - player.radius - (crownSize * 1.2));
+            ctx.lineTo(player.xloc - (crownSize * 0.67), player.yloc - player.radius - (crownSize * 2.2));
+            ctx.lineTo(player.xloc - (crownSize * 0.33), player.yloc - player.radius - (crownSize * 1.2));
+            ctx.lineTo(player.xloc, player.yloc - player.radius - (crownSize * 2.5));
+            ctx.lineTo(player.xloc + (crownSize * 0.33), player.yloc - player.radius - (crownSize * 1.2));
+            ctx.lineTo(player.xloc + (crownSize * 0.67), player.yloc - player.radius - (crownSize * 2.2));
+            ctx.lineTo(player.xloc + crownSize, player.yloc - player.radius - (crownSize * 1.2));
 
+            ctx.moveTo(player.xloc - crownSize, player.yloc - player.radius - (crownSize * 1.2)); // Adjust the y-coordinate to make the top higher
+            ctx.lineTo(player.xloc + crownSize, player.yloc - player.radius - (crownSize * 1.2));
+            ctx.lineTo(player.xloc + crownSize, player.yloc - player.radius - (crownSize * .7));
+            ctx.lineTo(player.xloc - crownSize, player.yloc - player.radius - (crownSize * .7));
+            ctx.lineTo(player.xloc - crownSize, player.yloc - player.radius - (crownSize * 1.2));
+
+            // Set the top of the rectangle to the same y-value as the bottom of the previous points
+            ctx.lineTo(player.xloc - crownSize, player.yloc - player.radius - (crownSize * 0.8));
+
+            ctx.closePath();
+            ctx.fill();
+        }
+        
         // Write player name on top of the player
-        ctx.fillStyle = 'white';
-        ctx.font = 'bold 12px Arial';
-        ctx.textAlign = 'center';
-        ctx.fillText(player.name, player.xloc, player.yloc - player.radius - 10);
+        // ctx.fillStyle = 'white';
+        // ctx.font = 'bold 12px Arial';
+        // ctx.textAlign = 'center';
+        // ctx.fillText(player.name, player.xloc, player.yloc - player.radius - 10);
 
         // Store the player's current position
         previousPositions[i].push({ x: player.xloc, y: player.yloc });
 
         // If there are more than 25 positions stored, remove the oldest one
-        if (previousPositions[i].length > 20) {
+        if (previousPositions[i].length > 25) {
             previousPositions[i].shift();
         }
     }
