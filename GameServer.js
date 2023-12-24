@@ -5,11 +5,11 @@ const wss = new WebSocket.Server({ port: 8080 });
 var gs = {
     state: 'lobby', // lobby, playing, gameover
     players:[
-        { xloc: (200-10), yloc: 100,  direction:"down", radius: 14, color: 'rgb(10, 87, 209)', name: '', isPlayer:false, isReady:false, isAlive:false},
-        { xloc: (1000-10),yloc: 100,  direction:"down", radius: 14, color: 'rgb(62, 212, 57)', name: '', isPlayer:false, isReady:false, isAlive:false},
-        { xloc: (400-10), yloc: 100,  direction:"down", radius: 14, color: 'rgb(224, 170, 34)', name: '', isPlayer:false, isReady:false, isAlive:false},
-        { xloc: (800-10), yloc: 100,  direction:"down", radius: 14, color: 'rgb(175, 87, 247)', name: '', isPlayer:false, isReady:false, isAlive:false} ,
-        { xloc: (600-10), yloc: 100,  direction:"down", radius: 14, color: 'rgb(245, 51, 219)', name: '', isPlayer:false, isReady:false, isAlive:false}
+        { xloc: (200 - 10), yloc: 100, isKing:false, speed: 6, direction: "down", radius: 10, color: 'rgb(10, 87, 209)',  name: '', isPlayer: false, isReady: false, isAlive: false },
+        { xloc: (1000 - 10),yloc: 100, isKing:false, speed: 6, direction: "down", radius: 10, color: 'rgb(62, 212, 57)',  name: '', isPlayer: false, isReady: false, isAlive: false },
+        { xloc: (400 - 10), yloc: 100, isKing:false, speed: 6, direction: "down", radius: 10, color: 'rgb(224, 170, 34)', name: '', isPlayer: false, isReady: false, isAlive: false },
+        { xloc: (800 - 10), yloc: 100, isKing:false, speed: 6, direction: "down", radius: 10, color: 'rgb(175, 87, 247)', name: '', isPlayer: false, isReady: false, isAlive: false },
+        { xloc: (600 - 10), yloc: 100, isKing:false, speed: 6, direction: "down", radius: 10, color: 'rgb(245, 51, 219)', name: '', isPlayer: false, isReady: false, isAlive: false }
     ],
     enemy:{
         xloc: 600, 
@@ -17,13 +17,22 @@ var gs = {
         direction:"up", 
         radius: 35, color: 'rgb(255, 48, 48)', 
         name: 'X  X',
-        speed:2,
+        speed:1,
         direction: getRandomDiagonalDirection()
+    },
+    fly:{
+        xloc: -1000, 
+        yloc: -1000,
+        isAlive: false,
+        radius: 10, 
+        color: 'rgb(255, 255, 255)', 
+        name: 'FLY',
+        lastDeathTime:0
     },
     colors: ['blue', 'red', 'green', 'orange', 'purple'],
     winMessage:"",
-    playerSpeed:6,
-    playTime:0
+    playTime:0,
+    levelUpTimeInSeconds: 10
 };
 
 var defaultGameState = JSON.parse(JSON.stringify(gs));
@@ -98,6 +107,7 @@ function handleGameOver(){
     gs.playTime = 0;
     gs.enemy = JSON.parse(JSON.stringify(defaultGameState.enemy)); 
     gs.enemy.direction = getRandomDiagonalDirection();
+    gs.fly = JSON.parse(JSON.stringify(defaultGameState.fly));
 }
 
 function resetGameState(){
@@ -165,10 +175,11 @@ function updateEnemyLocation(){
 }
 
 function updatePlayerLocations(){
-    var playerSpeed = gs.playerSpeed;
-    var playerRadius = 20;
     for(var i = 0; i < gs.players.length; i++){
         var currPlayer = gs.players[i];
+        var playerSpeed = currPlayer.speed;
+        var playerRadius = currPlayer.radius;
+
         if(currPlayer.isAlive == false) // If a played has died, do not bother moving them.
             continue;
         if(currPlayer.direction == "right"){
@@ -215,8 +226,9 @@ function checkForCollisions() {
                 playerDied(player2);
             }
         }
-        //Also check if the player has collied with the enemy
+        //Also check if the player has collided with the enemy or fly
         checkIfPlayerCollidedWithEnemy(gs.players[i]);
+        checkIfPlayerCollidedWithFly(gs.players[i]);
     }
 }
 function checkIfPlayerCollidedWithEnemy(player) {
@@ -227,6 +239,19 @@ function checkIfPlayerCollidedWithEnemy(player) {
         if (distance < player.radius + gs.enemy.radius) {
             console.log(player.name + " has collided with the enemy!");
             playerDied(player);
+        }
+    }
+}
+
+function checkIfPlayerCollidedWithFly(player) {
+    if (player.isAlive && gs.fly.isAlive) {
+        var dx = player.xloc - gs.fly.xloc;
+        var dy = player.yloc - gs.fly.yloc;
+        var distance = Math.sqrt(dx * dx + dy * dy);
+        if (distance < player.radius + gs.fly.radius) {
+            console.log(player.name + " has collided with the fly!");
+            gs.fly.isAlive = false;
+            gs.fly.lastDeathTime =  gs.playTime;
         }
     }
 }
@@ -250,9 +275,41 @@ function checkForGameOver(){
     }
 }
 
+//Spawns the fly periodically after its last death.
+//The fly only spawns if there are no players within 100 pixels of it.
+function spawnFly(){
+    var secondToSpawnFlyAfterLastDeath = 3;
+    if (!gs.fly.isAlive && gs.playTime - gs.fly.lastDeathTime >= (60 * secondToSpawnFlyAfterLastDeath)) {
+        var playerRadius = 100;
+        var validSpawn = false;
+        var flyX, flyY;
+
+        while (!validSpawn) {
+            flyX = Math.random() * canvas.width;
+            flyY = Math.random() * canvas.height;
+
+            validSpawn = true;
+            for (var i = 0; i < gs.players.length; i++) {
+                var player = gs.players[i];
+                var dx = player.xloc - flyX;
+                var dy = player.yloc - flyY;
+                var distance = Math.sqrt(dx * dx + dy * dy);
+                if (distance < playerRadius + player.radius) {
+                    validSpawn = false;
+                    break;
+                }
+            }
+        }
+
+        gs.fly.isAlive = true;
+        gs.fly.xloc = flyX;
+        gs.fly.yloc = flyY;
+    }
+}
+
 function updatePlayTime(){
     gs.playTime += 1;
-    if(gs.playTime % 60 == 0){ // 600 probably good here (10 seconds)
+    if(gs.playTime % (60 * gs.levelUpTimeInSeconds) == 0){ 
         gs.enemy.speed += 1;
         console.log("Enemy Speed Increased to: " + gs.enemy.speed);
     }
@@ -265,6 +322,7 @@ setInterval(function() {
         checkForGameOver();
         updatePlayerLocations();
         updateEnemyLocation();
+        spawnFly();
         updatePlayTime();
     }
 
