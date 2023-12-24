@@ -5,11 +5,11 @@ const wss = new WebSocket.Server({ port: 8080 });
 var gs = {
     state: 'lobby', // lobby, playing, gameover
     players:[
-        { xloc: (200-10), yloc: 100,  direction:"down", radius: 15, color: 'rgb(10, 87, 209)', name: '', isPlayer:false, isReady:false, isAlive:false},
-        { xloc: (1000-10),yloc: 100,  direction:"down", radius: 15, color: 'rgb(62, 212, 57)', name: '', isPlayer:false, isReady:false, isAlive:false},
-        { xloc: (400-10), yloc: 100,  direction:"down", radius: 15, color: 'rgb(224, 170, 34)', name: '', isPlayer:false, isReady:false, isAlive:false},
-        { xloc: (800-10), yloc: 100,  direction:"down", radius: 15, color: 'rgb(175, 87, 247)', name: '', isPlayer:false, isReady:false, isAlive:false} ,
-        { xloc: (600-10), yloc: 100,  direction:"down", radius: 15, color: 'rgb(245, 51, 219)', name: '', isPlayer:false, isReady:false, isAlive:false}
+        { xloc: (200-10), yloc: 100,  direction:"down", radius: 14, color: 'rgb(10, 87, 209)', name: '', isPlayer:false, isReady:false, isAlive:false},
+        { xloc: (1000-10),yloc: 100,  direction:"down", radius: 14, color: 'rgb(62, 212, 57)', name: '', isPlayer:false, isReady:false, isAlive:false},
+        { xloc: (400-10), yloc: 100,  direction:"down", radius: 14, color: 'rgb(224, 170, 34)', name: '', isPlayer:false, isReady:false, isAlive:false},
+        { xloc: (800-10), yloc: 100,  direction:"down", radius: 14, color: 'rgb(175, 87, 247)', name: '', isPlayer:false, isReady:false, isAlive:false} ,
+        { xloc: (600-10), yloc: 100,  direction:"down", radius: 14, color: 'rgb(245, 51, 219)', name: '', isPlayer:false, isReady:false, isAlive:false}
     ],
     enemy:{
         xloc: 600, 
@@ -98,7 +98,6 @@ function handleGameOver(){
     gs.playTime = 0;
     gs.enemy = JSON.parse(JSON.stringify(defaultGameState.enemy)); 
     gs.enemy.direction = getRandomDiagonalDirection();
-    gs.playerSpeed = JSON.parse(JSON.stringify(defaultGameState.playerSpeed));
 }
 
 function resetGameState(){
@@ -109,6 +108,7 @@ function getRandomDiagonalDirection () {
     var directions = ["up-right", "up-left", "down-right", "down-left"];
     return directions[Math.floor(Math.random() * directions.length)];
 }
+
 function updateEnemyLocation(){
     var enemySpeed = gs.enemy.speed;
     var enemyRadius = gs.enemy.radius;
@@ -252,7 +252,7 @@ function checkForGameOver(){
 
 function updatePlayTime(){
     gs.playTime += 1;
-    if(gs.playTime % 100 == 0){ // 500 probably good here
+    if(gs.playTime % 60 == 0){ // 600 probably good here (10 seconds)
         gs.enemy.speed += 1;
         console.log("Enemy Speed Increased to: " + gs.enemy.speed);
     }
