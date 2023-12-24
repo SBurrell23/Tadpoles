@@ -5,15 +5,24 @@ const wss = new WebSocket.Server({ port: 8080 });
 var gs = {
     state: 'lobby', // lobby, playing, gameover
     players:[
-        { xloc: 100, yloc: 100,  direction:"right", radius: 20, color: '#95bfff', name: '', isPlayer:false, isReady:false, isAlive:false},
-        { xloc: 700, yloc: 200,  direction:"right", radius: 20, color: 'red', name: '', isPlayer:false, isReady:false, isAlive:false},
-        { xloc: 400, yloc: 300,  direction:"right", radius: 20, color: 'green', name: '', isPlayer:false, isReady:false, isAlive:false},
-        { xloc: 1000, yloc: 400, direction:"right", radius: 20, color: 'orange', name: '', isPlayer:false, isReady:false, isAlive:false} ,
-        { xloc: 300, yloc: 400,  direction:"right", radius: 20, color: 'purple', name: '', isPlayer:false, isReady:false, isAlive:false}
+        { xloc: (200-20), yloc: 100,  direction:"down", radius: 15, color: '#95bfff', name: '', isPlayer:false, isReady:false, isAlive:false},
+        { xloc: (1000-20),yloc: 100,  direction:"down", radius: 15, color: 'magenta', name: '', isPlayer:false, isReady:false, isAlive:false},
+        { xloc: (400-20), yloc: 100,  direction:"down", radius: 15, color: 'green', name: '', isPlayer:false, isReady:false, isAlive:false},
+        { xloc: (800-20), yloc: 100,  direction:"down", radius: 15, color: 'orange', name: '', isPlayer:false, isReady:false, isAlive:false} ,
+        { xloc: (600-20), yloc: 100,  direction:"down", radius: 15, color: 'purple', name: '', isPlayer:false, isReady:false, isAlive:false}
     ],
+    enemy:{
+        xloc: 600, 
+        yloc: 480,  
+        direction:"up", 
+        radius: 35, color: 'red', 
+        name: 'X  X',
+        speed:4,
+        direction: getRandomDiagonalDirection()
+    },
     colors: ['blue', 'red', 'green', 'orange', 'purple'],
     winMessage:"",
-    playerSpeed:3,
+    playerSpeed:6,
     playTime:0
 };
 
@@ -22,7 +31,7 @@ var defaultGameState = JSON.parse(JSON.stringify(gs));
 //This needs to match what is in the client
 var canvas = {
     width: 1200,
-    height: 500
+    height: 700
 };
 
 const users = new Map();
@@ -82,15 +91,77 @@ wss.on('connection', (ws) => {
 function handleGameOver(){
     for(var i = 0; i < gs.players.length; i++){
         gs.players[i].isReady = false;
-        gs.players[i].direction = "right";
+        gs.players[i].direction = "down";
         gs.players[i].xloc = defaultGameState.players[i].xloc;
         gs.players[i].yloc = defaultGameState.players[i].yloc;
     }
+    gs.playTime = 0;
+    gs.enemy = JSON.parse(JSON.stringify(defaultGameState.enemy)); 
+    gs.enemy.direction = getRandomDiagonalDirection();
     gs.playerSpeed = JSON.parse(JSON.stringify(defaultGameState.playerSpeed));
 }
 
 function resetGameState(){
     gs = JSON.parse(JSON.stringify(defaultGameState));
+}
+
+function getRandomDiagonalDirection () {
+    var directions = ["up-right", "up-left", "down-right", "down-left"];
+    return directions[Math.floor(Math.random() * directions.length)];
+}
+function updateEnemyLocation(){
+    var enemySpeed = gs.enemy.speed;
+    var enemyRadius = gs.enemy.radius;
+    
+    // Move the enemy based on the current direction
+    if (gs.enemy.direction === "up-right") {
+        gs.enemy.xloc += enemySpeed;
+        gs.enemy.yloc -= enemySpeed;
+    } else if (gs.enemy.direction === "up-left") {
+        gs.enemy.xloc -= enemySpeed;
+        gs.enemy.yloc -= enemySpeed;
+    } else if (gs.enemy.direction === "down-right") {
+        gs.enemy.xloc += enemySpeed;
+        gs.enemy.yloc += enemySpeed;
+    } else if (gs.enemy.direction === "down-left") {
+        gs.enemy.xloc -= enemySpeed;
+        gs.enemy.yloc += enemySpeed;
+    }
+    
+    // Check if the enemy hits the canvas on any side
+    if (gs.enemy.xloc < enemyRadius || gs.enemy.xloc > canvas.width - enemyRadius || gs.enemy.yloc < enemyRadius || gs.enemy.yloc > canvas.height - enemyRadius) {
+        // Bounce back inward in the opposite direction
+        if (gs.enemy.xloc < enemyRadius) {
+            gs.enemy.xloc = enemyRadius;
+            if (gs.enemy.direction === "up-left") {
+                gs.enemy.direction = "up-right";
+            } else if (gs.enemy.direction === "down-left") {
+                gs.enemy.direction = "down-right";
+            }
+        } else if (gs.enemy.xloc > canvas.width - enemyRadius) {
+            gs.enemy.xloc = canvas.width - enemyRadius;
+            if (gs.enemy.direction === "up-right") {
+                gs.enemy.direction = "up-left";
+            } else if (gs.enemy.direction === "down-right") {
+                gs.enemy.direction = "down-left";
+            }
+        }
+        if (gs.enemy.yloc < enemyRadius) {
+            gs.enemy.yloc = enemyRadius;
+            if (gs.enemy.direction === "up-left") {
+                gs.enemy.direction = "down-left";
+            } else if (gs.enemy.direction === "up-right") {
+                gs.enemy.direction = "down-right";
+            }
+        } else if (gs.enemy.yloc > canvas.height - enemyRadius) {
+            gs.enemy.yloc = canvas.height - enemyRadius;
+            if (gs.enemy.direction === "down-left") {
+                gs.enemy.direction = "up-left";
+            } else if (gs.enemy.direction === "down-right") {
+                gs.enemy.direction = "up-right";
+            }
+        }
+    }
 }
 
 function updatePlayerLocations(){
@@ -129,6 +200,7 @@ function updatePlayerLocations(){
 
 function checkForCollisions() {
     for (var i = 0; i < gs.players.length; i++) {
+        //Go through and first check if a player has collided with another player
         for (var j = i + 1; j < gs.players.length; j++) {
             var player1 = gs.players[i];
             var player2 = gs.players[j];
@@ -143,21 +215,34 @@ function checkForCollisions() {
                 playerDied(player2);
             }
         }
+        //Also check if the player has collied with the enemy
+        checkIfPlayerCollidedWithEnemy(gs.players[i]);
+    }
+}
+function checkIfPlayerCollidedWithEnemy(player) {
+    if (player.isAlive) {
+        var dx = player.xloc - gs.enemy.xloc;
+        var dy = player.yloc - gs.enemy.yloc;
+        var distance = Math.sqrt(dx * dx + dy * dy);
+        if (distance < player.radius + gs.enemy.radius) {
+            console.log(player.name + " has collided with the enemy!");
+            playerDied(player);
+        }
     }
 }
 
 function playerDied(player){
-    //player.isAlive = false;
-    //player.xloc = -1000;
-    //player.yloc = -1000;
+    player.isAlive = false;
+    player.xloc = -1000;
+    player.yloc = -1000;
 }
 
 function checkForGameOver(){
     var alivePlayers = gs.players.filter(player => player.isAlive);
-    if (alivePlayers.length === 0) { // Check to 1 for prod
-        gs.state = 'gameover';
-        gs.winMessage = alivePlayers[0].name + " Wins!";
-    }
+    // if (alivePlayers.length === 1) {
+    //     gs.state = 'gameover';
+    //     gs.winMessage = alivePlayers[0].name + " Wins!";
+    // }
     if (alivePlayers.length === 0) {
         gs.state = 'gameover';
         gs.winMessage = "Nobody Wins!";
@@ -166,9 +251,9 @@ function checkForGameOver(){
 
 function updatePlayTime(){
     gs.playTime += 1;
-    if(gs.playTime % 300 == 0){
-        gs.playerSpeed += 1;
-        console.log("Player Speed Increased to: " + gs.playerSpeed);
+    if(gs.playTime % 500 == 0){
+        gs.enemy.speed += 1;
+        console.log("Enemy Speed Increased to: " + gs.enemy.speed);
     }
 }
 
@@ -178,6 +263,7 @@ setInterval(function() {
         checkForCollisions();
         checkForGameOver();
         updatePlayerLocations();
+        updateEnemyLocation();
         updatePlayTime();
     }
 

@@ -14,21 +14,24 @@ function handleServerMessage(message) {
     globalState = gs;
     //console.log(gs);
 
+    drawGameState(gs);
+
     //User has arrived, if not playing assign them a spot, or else wait for the game to end
     if(playerId == -1 && gs.state != "playing"){
         console.log("User Arrived in Lobby");
-        drawGameState(gs,false);
-        drawWelcomeText();
         reservePlayerSpot(gs);
     }
 
+    if(gs.state == "lobby"){
+        drawWelcomeText();
+    }
+
     if(gs.state == "playing"){
+        console.log("Game Started!");
         handleGameOverOnceFlag = true;
-        drawGameState(gs,true);
     }
     
     if(gs.state == "gameover"){
-        drawGameState(gs,false);
         drawGameOverText();
         handleGameOverOnce();
     }
@@ -40,6 +43,7 @@ function handleServerMessage(message) {
 
 function handleGameOverOnce(){
     if(handleGameOverOnceFlag){
+        console.log("Game Over!");
         var playerInputId = '#player' + playerId + 'Name';
         var playerBtnId = '#player' + playerId + 'Btn';
 
@@ -69,8 +73,8 @@ function drawGameOverText(){
     ctx.fillStyle = 'white';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('Game Over', canvasWidth / 2, (canvasHeight / 2) - 50);
-    ctx.fillText(globalState.winMessage, canvasWidth / 2, (canvasHeight / 2) + 40);
+    ctx.fillText('Game Over', canvasWidth / 2, (canvasHeight / 2) - 70);
+    ctx.fillText(globalState.winMessage, canvasWidth / 2, (canvasHeight / 2) + 10);
 }
 
 function drawWelcomeText(){
@@ -83,7 +87,7 @@ function drawWelcomeText(){
     ctx.fillStyle = 'white';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('Stay Away!', canvasWidth / 2, canvasHeight / 2);
+    ctx.fillText('Stay Away!', canvasWidth / 2, (canvasHeight / 2) - 50);
 }
 
 function reservePlayerSpot(gs){
@@ -126,7 +130,7 @@ function updateLobby(gs){
             }
             if(player.isPlayer == true && player.isReady == false){
                 $(playerInputId).val("");
-                $(playerInputId).attr("placeholder","Player getting ready...");
+                $(playerInputId).attr("placeholder","Player not ready...");
                 $(playerBtnId).text("In Lobby");
                 $(playerBtnId).removeClass('btn-success').addClass('btn-outline-primary');
                 $(playerInputId).removeClass('is-valid');
@@ -171,7 +175,7 @@ function isConnectedPlayer(gs){
     return count;
 }
 
-function drawGameState(gs, withPlayers) {
+function drawGameState(gs) {
     // Get a reference to the canvas context
     var ctx = document.getElementById('canvas').getContext('2d');
 
@@ -182,21 +186,23 @@ function drawGameState(gs, withPlayers) {
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     // Draw the players
-    if (withPlayers){
-        drawPlayers(gs, ctx);
-        drawPlayerSpeed(gs,ctx);
+    drawPlayers(gs, ctx);
+    drawEnemy(gs, ctx);
+
+    if (gs.state != "lobby"){
+        drawLevel(gs,ctx);
     }
 
     drawSpikes(ctx, canvas.width, canvas.height, 4, "#ff0000");
 
 }
 
-function drawPlayerSpeed(gs,ctx){
+function drawLevel(gs,ctx){
     ctx.font = '20px Arial';
     ctx.fillStyle = 'white';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText("Level " + (gs.playerSpeed - 2), 45, 23);
+    ctx.fillText("Level " + (gs.enemy.speed - 3), 45, 23);
 }
 
 
@@ -265,12 +271,28 @@ function drawSpikes(ctx, canvasWidth, canvasHeight, spikeSize, spikeColor) {
     }
 }
 
+function drawEnemy(gs, ctx) {
+    // Draw enemy robot player
+    var enemy = gs.enemy;
+    ctx.beginPath();
+    ctx.arc(enemy.xloc, enemy.yloc, enemy.radius, 0, Math.PI * 2, false);
+    ctx.fillStyle = enemy.color;
+    ctx.fill();
+    ctx.closePath();
+
+    // Write enemy name on top of the player
+    ctx.fillStyle = 'black';
+    ctx.font = 'bold 18px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText(enemy.name, enemy.xloc, enemy.yloc - 8);
+    
+}
 
 function drawPlayers(gs,ctx){
     // Draw all players
     for (var i = 0; i < gs.players.length; i++) {
         var player = gs.players[i];
-        if(player.isAlive == false){
+        if(player.isReady == false){
             continue;
         }
         ctx.beginPath();
@@ -283,7 +305,7 @@ function drawPlayers(gs,ctx){
         ctx.fillStyle = 'white';
         ctx.font = 'bold 12px Arial';
         ctx.textAlign = 'center';
-        ctx.fillText(player.name, player.xloc, player.yloc - player.radius - 5);
+        ctx.fillText(player.name, player.xloc, player.yloc - player.radius - 10);
     }
 }
 
@@ -343,10 +365,15 @@ $(document).ready(function() {
         $('#player' + i + 'Btn').click(function() {
             $('#player' + i + 'Btn').removeClass('btn-outline-primary').addClass('btn-success').attr('disabled', true);
             $('#player' + i + 'Name').addClass('is-valid').attr('disabled', true);
-            console.log('Player ' + i + ' Is Ready To Play as ' + $('#player' + i + 'Name').val() + '!');
+            var playerChosenName = $('#player' + i + 'Name').val();
+            if(playerChosenName == ""){
+                playerChosenName = "Player " + i;
+                $('#player' + i + 'Name').val(playerChosenName);
+            }
+            console.log('Player ' + i + ' Is Ready To Play as ' + playerChosenName + '!');
             socket.send(JSON.stringify({
                 type:"playerLogin",
-                name: $('#player' + i + 'Name').val(),
+                name: playerChosenName,
                 id:playerId
             }));
         });
