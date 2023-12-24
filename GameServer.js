@@ -246,6 +246,7 @@ function checkForGameOver(){
     if (alivePlayers.length === 0) {
         gs.state = 'gameover';
         gs.winMessage = "Nobody Wins!";
+        console.log("Game Over!");
     }
 }
 

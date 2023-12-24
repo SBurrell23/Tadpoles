@@ -298,7 +298,7 @@ function drawEnemy(gs, ctx) {
         ctx.arc(pos.x, pos.y, enemy.radius, 0, Math.PI * 2, false);
         ctx.fill();
     }
-
+    
     ctx.beginPath();
     ctx.arc(enemy.xloc, enemy.yloc, enemy.radius, 0, Math.PI * 2, false);
     ctx.fillStyle = enemy.color;
