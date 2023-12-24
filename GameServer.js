@@ -5,8 +5,8 @@ const wss = new WebSocket.Server({ port: 8080 });
 var gs = {
     state: 'lobby', // lobby, playing, gameover
     players:[
-        { xloc: (200-20), yloc: 100,  direction:"down", radius: 15, color: '#95bfff', name: '', isPlayer:false, isReady:false, isAlive:false},
-        { xloc: (1000-20),yloc: 100,  direction:"down", radius: 15, color: 'magenta', name: '', isPlayer:false, isReady:false, isAlive:false},
+        { xloc: (200-20), yloc: 100,  direction:"down", radius: 15, color: 'rgb(149, 191, 255)', name: '', isPlayer:false, isReady:false, isAlive:false},
+        { xloc: (1000-20),yloc: 100,  direction:"down", radius: 15, color: 'rgb(255, 0, 255)', name: '', isPlayer:false, isReady:false, isAlive:false},
         { xloc: (400-20), yloc: 100,  direction:"down", radius: 15, color: 'green', name: '', isPlayer:false, isReady:false, isAlive:false},
         { xloc: (800-20), yloc: 100,  direction:"down", radius: 15, color: 'orange', name: '', isPlayer:false, isReady:false, isAlive:false} ,
         { xloc: (600-20), yloc: 100,  direction:"down", radius: 15, color: 'purple', name: '', isPlayer:false, isReady:false, isAlive:false}
@@ -15,7 +15,7 @@ var gs = {
         xloc: 600, 
         yloc: 480,  
         direction:"up", 
-        radius: 35, color: 'red', 
+        radius: 35, color: 'rgb(255, 0, 0)', 
         name: 'X  X',
         speed:4,
         direction: getRandomDiagonalDirection()
@@ -49,7 +49,7 @@ wss.on('connection', (ws) => {
         }
 
         if(message.type == "playerLogin"){
-            console.log("Player logged in: " + message.name);
+            console.log("Player "+ message.id +" ready as: " + message.name);
             gs.players[message.id - 1].name = message.name;
             gs.players[message.id - 1].isReady = true;
         }
@@ -251,7 +251,7 @@ function checkForGameOver(){
 
 function updatePlayTime(){
     gs.playTime += 1;
-    if(gs.playTime % 500 == 0){
+    if(gs.playTime % 100 == 0){ // 500 probably good here
         gs.enemy.speed += 1;
         console.log("Enemy Speed Increased to: " + gs.enemy.speed);
     }

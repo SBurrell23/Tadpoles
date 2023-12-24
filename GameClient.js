@@ -3,6 +3,7 @@ socket.addEventListener('open', function () {
     socket.addEventListener('message', function (event) {
         handleServerMessage(event.data);
     });
+    requestAnimationFrame(gameLoop);
 });
 
 var globalState = null;
@@ -14,31 +15,38 @@ function handleServerMessage(message) {
     globalState = gs;
     //console.log(gs);
 
-    drawGameState(gs);
-
-    //User has arrived, if not playing assign them a spot, or else wait for the game to end
-    if(playerId == -1 && gs.state != "playing"){
-        console.log("User Arrived in Lobby");
-        reservePlayerSpot(gs);
-    }
-
-    if(gs.state == "lobby"){
-        drawWelcomeText();
-    }
-
-    if(gs.state == "playing"){
-        console.log("Game Started!");
-        handleGameOverOnceFlag = true;
-    }
-    
-    if(gs.state == "gameover"){
-        drawGameOverText();
-        handleGameOverOnce();
-    }
-    
-    //Regardless of state, update the lobby user list
+    //Listen to incoming server messages and update the lobby accordingly
     updateLobby(gs);
 
+    //The requestAnimationFrame handles calling the gameLoop, so no need to call it here
+}
+
+function gameLoop(gs) {
+    var gs = globalState;
+    if (gs) {
+        drawGameState(gs);
+        //User has arrived, if not playing assign them a spot, or else wait for the game to end
+        if(playerId == -1 && gs.state != "playing"){
+            console.log("User Arrived in Lobby");
+            reservePlayerSpot(gs);
+        }
+
+        if(gs.state == "lobby"){
+            drawWelcomeText();
+        }
+
+        if(gs.state == "playing"){
+            if(!handleGameOverOnceFlag)
+                console.log("Game Started!");
+            handleGameOverOnceFlag = true;
+        }
+        
+        if(gs.state == "gameover"){
+            drawGameOverText();
+            handleGameOverOnce();
+        }
+    }
+    requestAnimationFrame(gameLoop); // schedule next game loop
 }
 
 function handleGameOverOnce(){
@@ -54,7 +62,10 @@ function handleGameOverOnce(){
         $(playerBtnId).prop('disabled', false);
         $(playerBtnId).removeClass('btn-success').addClass('btn-outline-primary');
         $(playerBtnId).text("Ready");
-        
+
+        previousPositions = [];
+        previousEnemyPositions = [];
+
         socket.send(JSON.stringify({
             type:"resetGame"
         }));
@@ -180,9 +191,10 @@ function drawGameState(gs) {
     var ctx = document.getElementById('canvas').getContext('2d');
 
     // Clear the entire canvas
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    //ctx.clearRect(0, 0, canvas.width, canvas.height);
     // Fill the entire canvas with a background rectangle
-    ctx.fillStyle = "#282a2c";
+
+    ctx.fillStyle = 'rgba(44, 41, 42, 1)';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     // Draw the players
@@ -194,8 +206,8 @@ function drawGameState(gs) {
     }
 
     drawSpikes(ctx, canvas.width, canvas.height, 4, "#ff0000");
-
 }
+
 
 function drawLevel(gs,ctx){
     ctx.font = '20px Arial';
@@ -271,9 +283,22 @@ function drawSpikes(ctx, canvasWidth, canvasHeight, spikeSize, spikeColor) {
     }
 }
 
+var previousEnemyPositions = [];
 function drawEnemy(gs, ctx) {
     // Draw enemy robot player
     var enemy = gs.enemy;
+
+    // Draw the enemy's trail
+    for (var j = 0; j < previousEnemyPositions.length; j++) {
+        var pos = previousEnemyPositions[j];
+        var alpha = 0.15 * (j / previousEnemyPositions.length); // Adjust alpha as needed
+        var color = enemy.color.replace(')', ', ' + alpha + ')').replace('rgb', 'rgba');
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.arc(pos.x, pos.y, enemy.radius, 0, Math.PI * 2, false);
+        ctx.fill();
+    }
+
     ctx.beginPath();
     ctx.arc(enemy.xloc, enemy.yloc, enemy.radius, 0, Math.PI * 2, false);
     ctx.fillStyle = enemy.color;
@@ -285,16 +310,40 @@ function drawEnemy(gs, ctx) {
     ctx.font = 'bold 18px Arial';
     ctx.textAlign = 'center';
     ctx.fillText(enemy.name, enemy.xloc, enemy.yloc - 8);
-    
+
+    // Store the enemy's current position
+    previousEnemyPositions.push({ x: enemy.xloc, y: enemy.yloc });
+
+    // If there are more than 25 positions stored, remove the oldest one
+    if (previousEnemyPositions.length > 25) {
+        previousEnemyPositions.shift();
+    }
 }
 
-function drawPlayers(gs,ctx){
+var previousPositions = [];
+function drawPlayers(gs, ctx) {
     // Draw all players
     for (var i = 0; i < gs.players.length; i++) {
         var player = gs.players[i];
-        if(player.isReady == false){
+        if (player.isReady == false) {
             continue;
         }
+
+        // Draw the player's trail
+        if (!previousPositions[i]) {
+            previousPositions[i] = [];
+        }
+        for (var j = 0; j < previousPositions[i].length; j++) {
+            var pos = previousPositions[i][j];
+            var alpha = 0.25 * (j / previousPositions[i].length); // Adjust alpha as needed
+            var color = player.color.replace(')', ', ' + alpha + ')').replace('rgb', 'rgba');
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.arc(pos.x, pos.y, player.radius, 0, Math.PI * 2, false);
+            ctx.fill();
+        }
+
+        // Draw the player
         ctx.beginPath();
         ctx.arc(player.xloc, player.yloc, player.radius, 0, Math.PI * 2, false);
         ctx.fillStyle = player.color;
@@ -306,6 +355,14 @@ function drawPlayers(gs,ctx){
         ctx.font = 'bold 12px Arial';
         ctx.textAlign = 'center';
         ctx.fillText(player.name, player.xloc, player.yloc - player.radius - 10);
+
+        // Store the player's current position
+        previousPositions[i].push({ x: player.xloc, y: player.yloc });
+
+        // If there are more than 25 positions stored, remove the oldest one
+        if (previousPositions[i].length > 20) {
+            previousPositions[i].shift();
+        }
     }
 }
 
