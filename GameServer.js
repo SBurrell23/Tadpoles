@@ -32,7 +32,8 @@ var gs = {
     colors: ['blue', 'red', 'green', 'orange', 'purple'],
     winMessage:"",
     playTime:0,
-    levelUpTimeInSeconds: 10
+    levelUpTimeInSeconds: 10,
+    flyEatenSpeedDecrement: 0.8
 };
 
 var defaultGameState = JSON.parse(JSON.stringify(gs));
@@ -101,7 +102,7 @@ function handleGameOver(){
     for(var i = 0; i < gs.players.length; i++){
         gs.players[i].isReady = false;
         gs.players[i].direction = "down";
-        gs.players[i].isKing = "false";
+        gs.players[i].isKing = false;
         gs.players[i].flysEaten = 0;
         gs.players[i].xloc = defaultGameState.players[i].xloc;
         gs.players[i].yloc = defaultGameState.players[i].yloc;
@@ -221,13 +222,21 @@ function checkForCollisions() {
             var player2 = gs.players[j];
             if(player1.isAlive == false || player2.isAlive == false)
                 continue;
-            var dx = player1.xloc - player2.xloc;
-            var dy = player1.yloc - player2.yloc;
-            var distance = Math.sqrt(dx * dx + dy * dy);
-            if (distance < player1.radius + player2.radius) {
-                console.log("Collision Detected: " + player1.name + " and " + player2.name + " have collided!");
-                playerDied(player1);
-                playerDied(player2);
+            if(player1.isKing || player2.isKing){
+                var dx = player1.xloc - player2.xloc;
+                var dy = player1.yloc - player2.yloc;
+                var distance = Math.sqrt(dx * dx + dy * dy);
+                if (distance < player1.radius + player2.radius) {
+                    console.log("King collision detected: " + player1.name + " and " + player2.name + " have collided!");
+                    if(player1.isKing){
+                        playerAtePlayer(player1);
+                        playerDied(player2);
+                    }
+                    else if(player2.isKing){
+                        playerAtePlayer(player2);
+                        playerDied(player1);
+                    }
+                }
             }
         }
         //Also check if the player has collided with the enemy or fly
@@ -264,12 +273,30 @@ function checkIfPlayerCollidedWithFly(player) {
 function playerAteFly(player){
     player.flysEaten += 1;
     player.radius += 3;
+
+    //Player speed cant go below 1
+    if((player.speed - gs.flyEatenSpeedDecrement) < 1)
+        player.speed = 1;
+    else
+        player.speed -= 0.5;
+
     if (player.flysEaten > 0) {
         var maxFliesEaten = Math.max(...gs.players.map(player => player.flysEaten));
         if (player.flysEaten >= maxFliesEaten) {
             player.isKing = true;
         }
     }
+}
+
+//Players count as 3 flys eaten
+function playerAtePlayer(player){
+    player.flysEaten += 3;
+    player.radius += 9;
+    //Player speed cant go below 1
+    if((player.speed - (gs.flyEatenSpeedDecrement*3)) < 1)
+        player.speed = 1;
+    else
+        player.speed -= (gs.flyEatenSpeedDecrement*3);
 }
 
 function playerDied(player){
@@ -282,12 +309,20 @@ function checkForGameOver(){
     var alivePlayers = gs.players.filter(player => player.isAlive);
     // if (alivePlayers.length === 1) {
     //     gs.state = 'gameover';
-    //     gs.winMessage = alivePlayers[0].name + " Wins!";
+    //     gs.winMessage = alivePlayers[0].name + " wins as the last player left alive!"
     // }
     if (alivePlayers.length === 0) {
         gs.state = 'gameover';
         gs.winMessage = "Nobody Wins!";
         console.log("Game Over!");
+    }
+
+    var flysToWin = 10;
+    var playerWithEnoughFlies = gs.players.find(player => player.flysEaten >= flysToWin);
+    if (playerWithEnoughFlies) {
+        console.log(playerWithEnoughFlies.name + " has eaten 10 flys and wins!");
+        gs.state = 'gameover';
+        gs.winMessage = playerWithEnoughFlies.name + " wins with " + playerWithEnoughFlies.flysEaten + " flys eaten!";
     }
 }
 

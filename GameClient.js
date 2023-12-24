@@ -285,37 +285,14 @@ function drawPlayers(gs, ctx) {
         ctx.closePath();
         
         if(player.isKing){
-            // Calculate the crown size based on the player's radius
-            var crownSize = player.radius * 0.5;
-            // Draw the crown points
-            ctx.fillStyle = 'yellow';
-            ctx.beginPath();
-            ctx.moveTo(player.xloc - crownSize, player.yloc - player.radius - (crownSize * 1.2));
-            ctx.lineTo(player.xloc - (crownSize * 0.67), player.yloc - player.radius - (crownSize * 2.2));
-            ctx.lineTo(player.xloc - (crownSize * 0.33), player.yloc - player.radius - (crownSize * 1.2));
-            ctx.lineTo(player.xloc, player.yloc - player.radius - (crownSize * 2.5));
-            ctx.lineTo(player.xloc + (crownSize * 0.33), player.yloc - player.radius - (crownSize * 1.2));
-            ctx.lineTo(player.xloc + (crownSize * 0.67), player.yloc - player.radius - (crownSize * 2.2));
-            ctx.lineTo(player.xloc + crownSize, player.yloc - player.radius - (crownSize * 1.2));
-
-            ctx.moveTo(player.xloc - crownSize, player.yloc - player.radius - (crownSize * 1.2)); // Adjust the y-coordinate to make the top higher
-            ctx.lineTo(player.xloc + crownSize, player.yloc - player.radius - (crownSize * 1.2));
-            ctx.lineTo(player.xloc + crownSize, player.yloc - player.radius - (crownSize * .7));
-            ctx.lineTo(player.xloc - crownSize, player.yloc - player.radius - (crownSize * .7));
-            ctx.lineTo(player.xloc - crownSize, player.yloc - player.radius - (crownSize * 1.2));
-
-            // Set the top of the rectangle to the same y-value as the bottom of the previous points
-            ctx.lineTo(player.xloc - crownSize, player.yloc - player.radius - (crownSize * 0.8));
-
-            ctx.closePath();
-            ctx.fill();
+           drawCrown(ctx, player);
         }
         
-        // Write player name on top of the player
-        // ctx.fillStyle = 'white';
-        // ctx.font = 'bold 12px Arial';
-        // ctx.textAlign = 'center';
-        // ctx.fillText(player.name, player.xloc, player.yloc - player.radius - 10);
+        //Write the number of flys eaton on the player
+        ctx.fillStyle = 'white';
+        ctx.font = 'bold ' + (player.radius) + 'px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(player.flysEaten , player.xloc, player.yloc );
 
         // Store the player's current position
         previousPositions[i].push({ x: player.xloc, y: player.yloc });
@@ -325,6 +302,33 @@ function drawPlayers(gs, ctx) {
             previousPositions[i].shift();
         }
     }
+}
+
+function drawCrown(ctx,player) {
+    // Calculate the crown size based on the player's radius
+    var crownSize = player.radius * 0.5;
+    // Draw the crown points
+    ctx.fillStyle = 'yellow';
+    ctx.beginPath();
+    ctx.moveTo(player.xloc - crownSize, player.yloc - player.radius - (crownSize * 1.2));
+    ctx.lineTo(player.xloc - (crownSize * 0.67), player.yloc - player.radius - (crownSize * 2.2));
+    ctx.lineTo(player.xloc - (crownSize * 0.33), player.yloc - player.radius - (crownSize * 1.2));
+    ctx.lineTo(player.xloc, player.yloc - player.radius - (crownSize * 2.5));
+    ctx.lineTo(player.xloc + (crownSize * 0.33), player.yloc - player.radius - (crownSize * 1.2));
+    ctx.lineTo(player.xloc + (crownSize * 0.67), player.yloc - player.radius - (crownSize * 2.2));
+    ctx.lineTo(player.xloc + crownSize, player.yloc - player.radius - (crownSize * 1.2));
+
+    ctx.moveTo(player.xloc - crownSize, player.yloc - player.radius - (crownSize * 1.2)); // Adjust the y-coordinate to make the top higher
+    ctx.lineTo(player.xloc + crownSize, player.yloc - player.radius - (crownSize * 1.2));
+    ctx.lineTo(player.xloc + crownSize, player.yloc - player.radius - (crownSize * .7));
+    ctx.lineTo(player.xloc - crownSize, player.yloc - player.radius - (crownSize * .7));
+    ctx.lineTo(player.xloc - crownSize, player.yloc - player.radius - (crownSize * 1.2));
+
+    // Set the top of the rectangle to the same y-value as the bottom of the previous points
+    ctx.lineTo(player.xloc - crownSize, player.yloc - player.radius - (crownSize * 0.8));
+
+    ctx.closePath();
+    ctx.fill();
 }
 
 function drawSpikes(ctx, canvasWidth, canvasHeight, spikeSize, spikeColor) {
