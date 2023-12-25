@@ -21,8 +21,8 @@ var gs = {
         direction: getRandomDiagonalDirection()
     },
     fly:{
-        xloc: -1000, 
-        yloc: -1000,
+        xloc: -1500, 
+        yloc: -1500,
         isAlive: false,
         radius: 10, 
         color: 'rgb(255, 255, 255)', 
@@ -185,31 +185,35 @@ function updatePlayerLocations(){
         var playerSpeed = currPlayer.speed;
         var playerRadius = currPlayer.radius;
 
+        //This is how far a players body may be out of frame before they are teleported
+        //Increase to allow them more time out of frame (5 is about half the player)
+        var teleportAdjustment = 4;
+
         if(currPlayer.isAlive == false) // If a played has died, do not bother moving them.
             continue;
         if(currPlayer.direction == "right"){
-            if(currPlayer.xloc < canvas.width - playerRadius)
+            if(currPlayer.xloc < canvas.width - playerRadius / teleportAdjustment)
                 currPlayer.xloc += playerSpeed;
             else
-                playerDied(currPlayer);
+                currPlayer.xloc = playerRadius / teleportAdjustment; // Move to the opposite side of the map
         }
         if(currPlayer.direction == "left"){
-            if(currPlayer.xloc > playerRadius)
+            if(currPlayer.xloc > playerRadius / teleportAdjustment)
                 currPlayer.xloc -= playerSpeed;
             else
-                playerDied(currPlayer);
+                currPlayer.xloc = canvas.width - playerRadius / teleportAdjustment; // Move to the opposite side of the map
         }
         if(currPlayer.direction == "up"){
-            if(currPlayer.yloc > playerRadius)
+            if(currPlayer.yloc > playerRadius / teleportAdjustment)
                 currPlayer.yloc -= playerSpeed;
             else
-                playerDied(currPlayer);
+                currPlayer.yloc = canvas.height - playerRadius / teleportAdjustment; // Move to the opposite side of the map
         }
         if(currPlayer.direction == "down"){
-            if(currPlayer.yloc < canvas.height - playerRadius)
+            if(currPlayer.yloc < canvas.height - playerRadius / teleportAdjustment)
                 currPlayer.yloc += playerSpeed;
             else
-                playerDied(currPlayer);
+                currPlayer.yloc = playerRadius / teleportAdjustment; // Move to the opposite side of the map
         }
     }
 }
@@ -329,8 +333,8 @@ function checkForGameOver(){
 //Spawns the fly periodically after its last death where no players are nearby
 function spawnFly(){
     var secondToSpawnFlyAfterLastDeath = 3; // Seconds to spawn the fly after its last death.
-    var flySpawnMargin = 25; // Cannot spawn this close to edge.
-    var playerRadius = 125; // Cannot spawn this close to a player.
+    var flySpawnMargin = 35; // Cannot spawn this close to edge.
+    var playerRadius = 200; // Cannot spawn this close to a player.
 
     if (!gs.fly.isAlive && gs.playTime - gs.fly.lastDeathTime >= (60 * secondToSpawnFlyAfterLastDeath)) {
         var validSpawn = false;

@@ -98,7 +98,7 @@ function drawWelcomeText(){
     ctx.fillStyle = 'white';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('Stay Away!', canvasWidth / 2, (canvasHeight / 2) - 50);
+    ctx.fillText('Tadpoles!', canvasWidth / 2, (canvasHeight / 2) - 50);
 }
 
 function reservePlayerSpot(gs){
@@ -181,21 +181,50 @@ function drawGameState(gs) {
     // Get a reference to the canvas context
     var ctx = document.getElementById('canvas').getContext('2d');
 
-    ctx.fillStyle = 'rgba(44, 41, 42, 1)';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // Draw the players
+    drawPond(gs, ctx);
+    
     drawFly(gs, ctx);
     drawPlayers(gs, ctx);
     drawEnemy(gs, ctx);
+
+    drawBorder(gs,ctx);
 
     if (gs.state != "lobby"){
         drawLevel(gs,ctx);
     }
 
-    drawSpikes(ctx, canvas.width, canvas.height, 4, "#ff2626");
+    
 }
 
+function drawPond(gs, ctx) {
+    const squareSize = 10;
+    const numRows = Math.ceil(ctx.canvas.height / squareSize);
+    const numCols = Math.ceil(ctx.canvas.width / squareSize);
+
+    for (let row = 0; row < numRows; row++) {
+        for (let col = 0; col < numCols; col++) {
+            const x = col * squareSize;
+            const y = row * squareSize;
+
+            if ((row + col) % 2 === 0) {
+                ctx.fillStyle = '#162d41';
+            } else {
+                ctx.fillStyle = '#162d4b';
+            }
+
+            ctx.fillRect(x, y, squareSize, squareSize);
+        }
+    }
+}
+
+function drawBorder(gs, ctx) {
+    var lineWidth = 3;
+    ctx.fillStyle = 'green';
+    ctx.fillRect(0, 0, ctx.canvas.width, lineWidth);
+    ctx.fillRect(0, 0, lineWidth, ctx.canvas.height);
+    ctx.fillRect(ctx.canvas.width - lineWidth, 0, lineWidth, ctx.canvas.height);
+    ctx.fillRect(0, ctx.canvas.height - lineWidth, ctx.canvas.width, lineWidth);
+}
 
 function drawLevel(gs,ctx){
     ctx.font = '20px Arial';
@@ -289,10 +318,12 @@ function drawPlayers(gs, ctx) {
         }
         
         //Write the number of flys eaton on the player
-        ctx.fillStyle = 'white';
-        ctx.font = 'bold ' + (player.radius) + 'px Arial';
-        ctx.textAlign = 'center';
-        ctx.fillText(player.flysEaten , player.xloc, player.yloc );
+        if(player.flysEaten > 0){
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold ' + (player.radius) + 'px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText(player.flysEaten , player.xloc, player.yloc );
+        }
 
         // Store the player's current position
         previousPositions[i].push({ x: player.xloc, y: player.yloc });
@@ -329,71 +360,6 @@ function drawCrown(ctx,player) {
 
     ctx.closePath();
     ctx.fill();
-}
-
-function drawSpikes(ctx, canvasWidth, canvasHeight, spikeSize, spikeColor) {
-    // Calculate the number of spikes needed
-    var numSpikes = Math.ceil((canvasWidth + canvasHeight) / (2 * spikeSize));
-
-    // Draw spikes along the top border
-    for (var i = 0; i < numSpikes; i++) {
-        var x = i * (2 * spikeSize);
-        var y = 0;
-
-        ctx.beginPath();
-        ctx.moveTo(x, y);
-        ctx.lineTo(x + spikeSize, y + spikeSize);
-        ctx.lineTo(x + 2 * spikeSize, y);
-        ctx.closePath();
-
-        ctx.fillStyle = spikeColor;
-        ctx.fill();
-    }
-
-    // Draw spikes along the right border
-    for (var i = 0; i < numSpikes; i++) {
-        var x = canvasWidth;
-        var y = i * (2 * spikeSize);
-
-        ctx.beginPath();
-        ctx.moveTo(x, y);
-        ctx.lineTo(x - spikeSize, y + spikeSize);
-        ctx.lineTo(x, y + 2 * spikeSize);
-        ctx.closePath();
-
-        ctx.fillStyle = spikeColor;
-        ctx.fill();
-    }
-
-    // Draw spikes along the bottom border
-    for (var i = 0; i < numSpikes; i++) {
-        var x = i * (2 * spikeSize);
-        var y = canvasHeight;
-
-        ctx.beginPath();
-        ctx.moveTo(x, y);
-        ctx.lineTo(x + spikeSize, y - spikeSize);
-        ctx.lineTo(x + 2 * spikeSize, y);
-        ctx.closePath();
-
-        ctx.fillStyle = spikeColor;
-        ctx.fill();
-    }
-
-    // Draw spikes along the left border
-    for (var i = 0; i < numSpikes; i++) {
-        var x = 0;
-        var y = i * (2 * spikeSize);
-
-        ctx.beginPath();
-        ctx.moveTo(x, y);
-        ctx.lineTo(x + spikeSize, y + spikeSize);
-        ctx.lineTo(x, y + 2 * spikeSize);
-        ctx.closePath();
-
-        ctx.fillStyle = spikeColor;
-        ctx.fill();
-    }
 }
 
 function movePlayer(direction){
