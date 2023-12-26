@@ -1,3 +1,8 @@
-Stay away from me!
+Consume flys!
 
-Run the local server with lite-server
+Consume other tadpoles!
+
+Avoid the Fish!
+
+
+Become the KING TADPOLE!
