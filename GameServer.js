@@ -126,6 +126,8 @@ function spawnPlayer(player,message){
 function resetGameState(){
     gs.enemy.speed = JSON.parse(JSON.stringify(defaultGameState.enemy.speed));
     gs.playTime = 0;
+    gs.fly.lastDeathTime = 0;
+    gs.fly.isAlive = false;
 }
 
 function checkForEmptyGameToReset(){
@@ -336,6 +338,9 @@ function playerDied(player){
 
 //Spawns the fly periodically after its last death where no players are nearby
 function spawnFly(){
+    if((gs.players.length === 0))
+        return;
+
     var secondToSpawnFlyAfterLastDeath = 3; // Seconds to spawn the fly after its last death.
     var flySpawnMargin = 35; // Cannot spawn this close to edge.
     var playerRadius = 300; // Cannot spawn this close to a player.

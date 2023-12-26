@@ -17,8 +17,8 @@ function handleServerMessage(message) {
     if(onLoad)
         getColors(gs);
     
-    disableChosenColors(gs);
     checkForPlayerDeath(gs);
+    disableJoinIfNoColorChosen();
 }
 
 function gameLoop(gs) {
@@ -39,13 +39,11 @@ function getColors(gs){
     onLoad = false;
 }
 
-function disableChosenColors(gs){
-    var playerColorSelect = $('#playerColor');
-    
-    gs.players.forEach(function(player) {
-        var colorHex = player.color.hex;
-        playerColorSelect.find('option[value="' + colorHex + '"]').prop('disabled', true);
-    });
+function disableJoinIfNoColorChosen(){
+    var playerColorVal = $('#playerColor').val();
+    if(playerColorVal == null || playerColorVal == ""){
+        $('#joinGameButton').prop('disabled', true);
+    }
 }
 
 function checkForPlayerDeath(gs){
