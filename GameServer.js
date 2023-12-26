@@ -25,7 +25,7 @@ var gs = {
         yloc: -1500,
         isAlive: false,
         radius: 10, 
-        color: 'rgb(255, 255, 255)', 
+        color: 'rgb(0, 0, 0)', 
         name: 'FLY',
         lastDeathTime:0
     },

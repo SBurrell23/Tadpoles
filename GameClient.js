@@ -81,7 +81,7 @@ function drawGameOverText(){
     var canvasHeight = canvas.height;
 
     ctx.font = '50px Georgia';
-    ctx.fillStyle = 'white';
+    ctx.fillStyle = 'black';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText('Game Over', canvasWidth / 2, (canvasHeight / 2) - 70);
@@ -95,7 +95,7 @@ function drawWelcomeText(){
     var canvasHeight = canvas.height;
 
     ctx.font = '50px Georgia';
-    ctx.fillStyle = 'white';
+    ctx.fillStyle = 'black';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText('Tadpoles!', canvasWidth / 2, (canvasHeight / 2) - 50);
@@ -207,9 +207,9 @@ function drawPond(gs, ctx) {
             const y = row * squareSize;
 
             if ((row + col) % 2 === 0) {
-                ctx.fillStyle = '#162d41';
+                ctx.fillStyle = '#A7FFFE';
             } else {
-                ctx.fillStyle = '#162d4b';
+                ctx.fillStyle = '#B4FFFD';
             }
 
             ctx.fillRect(x, y, squareSize, squareSize);
@@ -219,7 +219,7 @@ function drawPond(gs, ctx) {
 
 function drawBorder(gs, ctx) {
     var lineWidth = 3;
-    ctx.fillStyle = '#0e540a';
+    ctx.fillStyle = '#00A619';
     ctx.fillRect(0, 0, ctx.canvas.width, lineWidth);
     ctx.fillRect(0, 0, lineWidth, ctx.canvas.height);
     ctx.fillRect(ctx.canvas.width - lineWidth, 0, lineWidth, ctx.canvas.height);
@@ -228,7 +228,7 @@ function drawBorder(gs, ctx) {
 
 function drawLevel(gs,ctx){
     ctx.font = '20px Arial';
-    ctx.fillStyle = 'white';
+    ctx.fillStyle = 'black';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText("Level " + (gs.enemy.speed), 45, 23);
