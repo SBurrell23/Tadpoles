@@ -187,7 +187,7 @@ function updatePlayerLocations(){
 
         //This is how far a players body may be out of frame before they are teleported
         //Increase to allow them more time out of frame (5 is about half the player)
-        var teleportAdjustment = 4;
+        var teleportAdjustment = 2.5;
 
         if(currPlayer.isAlive == false) // If a played has died, do not bother moving them.
             continue;

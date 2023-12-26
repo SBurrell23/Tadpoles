@@ -219,7 +219,7 @@ function drawPond(gs, ctx) {
 
 function drawBorder(gs, ctx) {
     var lineWidth = 3;
-    ctx.fillStyle = 'green';
+    ctx.fillStyle = '#0e540a';
     ctx.fillRect(0, 0, ctx.canvas.width, lineWidth);
     ctx.fillRect(0, 0, lineWidth, ctx.canvas.height);
     ctx.fillRect(ctx.canvas.width - lineWidth, 0, lineWidth, ctx.canvas.height);
