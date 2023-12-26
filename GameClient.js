@@ -15,7 +15,9 @@ function handleServerMessage(message) {
     globalState = gs;
     //console.log(gs);
     if(onLoad)
-        updateLobby(gs);
+        getColors(gs);
+    
+    disableChosenColors(gs);
     checkForPlayerDeath(gs);
 }
 
@@ -27,22 +29,33 @@ function gameLoop(gs) {
     requestAnimationFrame(gameLoop); // schedule next game loop
 }
 
-function updateLobby(gs){
+function getColors(gs){
     var playerColorSelect = $('#playerColor');
-    playerColorSelect.empty();
 
     gs.colors.forEach(function(color) {
-        var option = $('<option></option>').val(color.hex).text(color.name);
+        var option = $("<option style='color:"+color.hex+"'></option>").val(color.hex).text(color.name);
         playerColorSelect.append(option);
     });
     onLoad = false;
 }
 
+function disableChosenColors(gs){
+    var playerColorSelect = $('#playerColor');
+    
+    gs.players.forEach(function(player) {
+        var colorHex = player.color.hex;
+        playerColorSelect.find('option[value="' + colorHex + '"]').prop('disabled', true);
+    });
+}
+
 function checkForPlayerDeath(gs){
-    if (playerId !== -1 && !gs.players.some(player => player.id === playerId)) {
+    if (!gs.players.some(player => player.id === playerId)) {
         previousPositions = [];
         $('#playerColor').prop('disabled', false);
         $('#joinGameButton').prop('disabled', false);
+    }else{
+        $('#playerColor').attr('disabled', true);
+        $('#joinGameButton').attr('disabled', true);
     }
 }
 
@@ -132,7 +145,7 @@ function drawEnemy(gs, ctx) {
 
     // Write enemy name on top of the player
     ctx.fillStyle = 'black';
-    ctx.font = 'bold 16px Arial';
+    ctx.font = 'bold 16px Indie Flower';
     ctx.textAlign = 'center';
     ctx.fillText(enemy.name, enemy.xloc, enemy.yloc - 8);
     ctx.font = 'bold 24px Arial';
@@ -275,26 +288,33 @@ $(document).keyup(function(e) {
 });
 
 $(document).ready(function() {
-    $('#joinGameButton').click(function() {
 
+    $('#joinGameButton').click(function() {
         var playerColorName = $('#playerColor option:selected').text();
         var playerColorHex = $('#playerColor').val();
 
         const randId = Date.now();
         playerId = randId;
 
-        console.log('Player is joining the game as player ' + playerId + " ("+ playerColorName + ')!');
-        
+        $('#playerColor').attr('disabled', true);
+        $('#joinGameButton').attr('disabled', true);
+
+        console.log('Player is joining the game as player ' + playerId + " ("+ playerColorName + ')!'); 
+
         socket.send(JSON.stringify({
             type:"playerJoined",
             color: playerColorHex,
             name: playerColorName,
-            id:playerId
+            id: playerId
         }));
 
-        $('#playerColor').attr('disabled', true);
-        $('#joinGameButton').attr('disabled', true);
     });
 
+    $('#playerColor').change(function() {
+        var playerColorHex = $(this).val();
+        $(this).css('color', playerColorHex);
+        $(this).css('border-width', '3px');
+        $(this).css('border-color', playerColorHex);
+    });
 });
 

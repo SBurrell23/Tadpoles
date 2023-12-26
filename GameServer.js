@@ -37,13 +37,13 @@ var gs = {
         lastDeathTime:0
     },
     colors: [
-        {hex: "#512DA8",name: "Purple"},
-        {hex: "#FB8C00",name: "Orange"},
-        {hex: "#EC407A",name: "Pink" },
-        {hex: "#FFCA28",name: "Yellow"},
-        {hex: "#388E3C",name: "Green"},
-        {hex: "#1E88E5",name: "Blue"},
-        {hex: "#5D4037",name: "Brown"}
+        {hex: "#512DA8", name: "Purple"},
+        {hex: "#FB8C00", name: "Orange"},
+        {hex: "#EC407A", name: "Pink"},
+        {hex: "#FFCA28", name: "Yellow"},
+        {hex: "#388E3C", name: "Green"},
+        {hex: "#1E88E5", name: "Blue"},
+        {hex: "#5D4037", name: "Brown"}
     ],
     winMessage:"",
     playTime:0,
@@ -82,6 +82,7 @@ wss.on('connection', (ws) => {
                 }
             }
         }
+        
     });
 
     //A user has disconnected
@@ -109,7 +110,7 @@ function spawnPlayer(player,message){
     do {
         xloc = Math.floor(Math.random() * (canvas.width - 2 * player.radius)) + player.radius;
         yloc = Math.floor(Math.random() * (canvas.height - 2 * player.radius)) + player.radius;
-    } while (Math.abs(xloc - enemy.x) < 1000 && Math.abs(yloc - enemy.y) < 1000 && Math.abs(xloc - fly.x) < 300 && Math.abs(yloc - fly.y) < 300);
+    } while (Math.abs(xloc - enemy.x) < 500 && Math.abs(yloc - enemy.y) < 500 && Math.abs(xloc - fly.x) < 300 && Math.abs(yloc - fly.y) < 300);
 
     player.xloc = xloc;
     player.yloc = yloc;
