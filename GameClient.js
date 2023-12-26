@@ -8,173 +8,42 @@ socket.addEventListener('open', function () {
 
 var globalState = null;
 var playerId = -1;
-var handleGameOverOnceFlag = true;
+var onLoad = true;
 
 function handleServerMessage(message) {
     var gs = JSON.parse(message);
     globalState = gs;
     //console.log(gs);
-
-    //Listen to incoming server messages and update the lobby accordingly
-    updateLobby(gs);
-
-    //The requestAnimationFrame handles calling the gameLoop, so no need to call it here
+    if(onLoad)
+        updateLobby(gs);
+    checkForPlayerDeath(gs);
 }
 
 function gameLoop(gs) {
     var gs = globalState;
     if (gs) {
         drawGameState(gs);
-        //User has arrived, if not playing assign them a spot, or else wait for the game to end
-        if(playerId == -1 && gs.state != "playing"){
-            console.log("User Arrived in Lobby");
-            reservePlayerSpot(gs);
-        }
-
-        if(gs.state == "lobby"){
-            drawWelcomeText();
-        }
-
-        if(gs.state == "playing"){
-            if(!handleGameOverOnceFlag)
-                console.log("Game Started!");
-            handleGameOverOnceFlag = true;
-        }
-        
-        if(gs.state == "gameover"){
-            drawGameOverText();
-            handleGameOverOnce();
-        }
     }
     requestAnimationFrame(gameLoop); // schedule next game loop
 }
 
-function handleGameOverOnce(){
-    if(handleGameOverOnceFlag){
-        console.log("Game Over!");
-        var playerInputId = '#player' + playerId + 'Name';
-        var playerBtnId = '#player' + playerId + 'Btn';
-
-        $(playerInputId).prop('disabled', false);
-        $(playerInputId).removeClass('is-valid');
-        
-        $(playerBtnId).attr('placeholder',"Player " + playerId);
-        $(playerBtnId).prop('disabled', false);
-        $(playerBtnId).removeClass('btn-success').addClass('btn-outline-primary');
-        $(playerBtnId).text("Ready");
-
-        previousPositions = [];
-        previousEnemyPositions = [];
-
-        socket.send(JSON.stringify({
-            type:"resetGame"
-        }));
-    }
-
-    handleGameOverOnceFlag = false;
-}
-
-function drawGameOverText(){
-    var canvas = document.getElementById('canvas');
-    var ctx = canvas.getContext('2d');
-    var canvasWidth = canvas.width;
-    var canvasHeight = canvas.height;
-
-    ctx.font = '50px Georgia';
-    ctx.fillStyle = 'black';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('Game Over', canvasWidth / 2, (canvasHeight / 2) - 70);
-    ctx.fillText(globalState.winMessage, canvasWidth / 2, (canvasHeight / 2) + 10);
-}
-
-function drawWelcomeText(){
-    var canvas = document.getElementById('canvas');
-    var ctx = canvas.getContext('2d');
-    var canvasWidth = canvas.width;
-    var canvasHeight = canvas.height;
-
-    ctx.font = '50px Georgia';
-    ctx.fillStyle = 'black';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('Tadpoles!', canvasWidth / 2, (canvasHeight / 2) - 50);
-}
-
-function reservePlayerSpot(gs){
-    var nextEmptyPlayer = (gs.players.findIndex(player => !player.isPlayer) + 1);
-
-    // Use jQuery to un-disable the respective input and button in the HTML
-    if (nextEmptyPlayer !== -1) {
-        var inputId = '#player' + nextEmptyPlayer + "Name";
-        var buttonId = '#player' + nextEmptyPlayer + "Btn";
-        //We need to reserve the player spot so nobody else can take it while the user thinks of a name
-        socket.send(JSON.stringify({
-            type:"reservePlayerSpot",
-            id:nextEmptyPlayer
-        }));
-        console.log("Reserving Player Spot: " + nextEmptyPlayer);
-        playerId = nextEmptyPlayer;
-        $(inputId).prop('disabled', false);
-        $(buttonId).prop('disabled', false);
-        $(buttonId).text("Ready");
-    }
-}
-
-//Looks at the player list, and updates the lobby inputs according to each players state
 function updateLobby(gs){
-    for (var i = 0; i < gs.players.length; i++) {
-        var player = gs.players[i];
-        //If player not the current player, update their input
-        if(i != (playerId - 1)){
-            var playerNum = i + 1;
-            var playerInputId = '#player' + playerNum + 'Name';
-            var playerBtnId = '#player' + playerNum + 'Btn';
+    var playerColorSelect = $('#playerColor');
+    playerColorSelect.empty();
 
-            if(player.isPlayer == false){
-                $(playerInputId).val("");
-                $(playerInputId).attr('placeholder',"Player " + playerNum);
-                $(playerBtnId).text("Available");
-                $(playerBtnId).removeClass('btn-success').addClass('btn-outline-primary');
-                $(playerInputId).removeClass('is-valid');
-                continue;
-            }
-            if(player.isPlayer == true && player.isReady == false){
-                $(playerInputId).val("");
-                $(playerInputId).attr("placeholder","Player not ready...");
-                $(playerBtnId).text("In Lobby");
-                $(playerBtnId).removeClass('btn-success').addClass('btn-outline-primary');
-                $(playerInputId).removeClass('is-valid');
-                continue;
-            }
-            if(player.isPlayer == true && player.isReady == true){
-                $(playerInputId).val(player.name);
-                $(playerInputId).addClass('is-valid').attr('disabled', true);
-                $(playerBtnId).text("Ready");
-                $(playerBtnId).removeClass('btn-outline-primary').addClass('btn-success').attr('disabled', true);
-                continue;
-            }
-        }
-    }
-    //If a player 1 exists, they are the only one who can start the game as long as someone is ready
-    if(numReadyPlayers(gs) >= 1 && playerId == 1){
-        $('#startGameButton').prop('disabled', false);
-    }else{
-        $('#startGameButton').prop('disabled', true);
-    }
-    //If the game is running or over disable the start button for everone else
-    if(gs.state == "playing"){
-        $('#startGameButton').prop('disabled', true);
-    }
+    gs.colors.forEach(function(color) {
+        var option = $('<option></option>').val(color.hex).text(color.name);
+        playerColorSelect.append(option);
+    });
+    onLoad = false;
 }
 
-//Count the number of players ready to play
-function numReadyPlayers(gs){
-    var count = 0;
-    for (var i = 0; i < gs.players.length; i++) 
-        if (gs.players[i].isReady == true) 
-            count++;
-    return count;
+function checkForPlayerDeath(gs){
+    if (playerId !== -1 && !gs.players.some(player => player.id === playerId)) {
+        previousPositions = [];
+        $('#playerColor').prop('disabled', false);
+        $('#joinGameButton').prop('disabled', false);
+    }
 }
 
 function drawGameState(gs) {
@@ -188,11 +57,6 @@ function drawGameState(gs) {
     drawEnemy(gs, ctx);
 
     drawBorder(gs,ctx);
-
-    if (gs.state != "lobby"){
-        drawLevel(gs,ctx);
-    }
-
     
 }
 
@@ -226,23 +90,21 @@ function drawBorder(gs, ctx) {
     ctx.fillRect(0, ctx.canvas.height - lineWidth, ctx.canvas.width, lineWidth);
 }
 
-function drawLevel(gs,ctx){
-    ctx.font = '20px Arial';
-    ctx.fillStyle = 'black';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText("Level " + (gs.enemy.speed), 45, 23);
-}
-
 function drawFly(gs, ctx) {
     // Draw the fly
     var fly = gs.fly;
     if(fly.isAlive){
+        ctx.fillStyle = 'black';
         ctx.beginPath();
-        ctx.arc(fly.xloc, fly.yloc, fly.radius, 0, Math.PI * 2, false);
-        ctx.fillStyle = fly.color;
-        ctx.fill();
+        ctx.moveTo(fly.xloc, fly.yloc - fly.radius);
+        for (var i = 1; i <= 5; i++) {
+            var angle = (i * 2 * Math.PI / 5) - (Math.PI / 2);
+            var x = fly.xloc + Math.cos(angle) * fly.radius;
+            var y = fly.yloc + Math.sin(angle) * fly.radius;
+            ctx.lineTo(x, y);
+        }
         ctx.closePath();
+        ctx.fill();
     }
 }
 
@@ -270,9 +132,11 @@ function drawEnemy(gs, ctx) {
 
     // Write enemy name on top of the player
     ctx.fillStyle = 'black';
-    ctx.font = 'bold 18px Arial';
+    ctx.font = 'bold 16px Arial';
     ctx.textAlign = 'center';
     ctx.fillText(enemy.name, enemy.xloc, enemy.yloc - 8);
+    ctx.font = 'bold 24px Arial';
+    ctx.fillText((gs.enemy.speed), enemy.xloc, enemy.yloc + 20);
 
     // Store the enemy's current position
     previousEnemyPositions.push({ x: enemy.xloc, y: enemy.yloc });
@@ -288,9 +152,6 @@ function drawPlayers(gs, ctx) {
     // Draw all players
     for (var i = 0; i < gs.players.length; i++) {
         var player = gs.players[i];
-        if (player.isReady == false) {
-            continue;
-        }
 
         // Draw the player's trail
         if (!previousPositions[i]) {
@@ -298,8 +159,9 @@ function drawPlayers(gs, ctx) {
         }
         for (var j = 0; j < previousPositions[i].length; j++) {
             var pos = previousPositions[i][j];
-            var alpha = .25 * (j / previousPositions[i].length); // Adjust alpha as needed
-            var color = player.color.replace(')', ', ' + alpha + ')').replace('rgb', 'rgba');
+            var alpha = .5 * (j / previousPositions[i].length); // Adjust alpha as needed
+            var playerRGB = hexToRgb(player.color);
+            var color = playerRGB.replace(')', ', ' + alpha + ')').replace('rgb', 'rgba');
             ctx.fillStyle = color;
             ctx.beginPath();
             ctx.arc(pos.x, pos.y, player.radius, 0, Math.PI * 2, false);
@@ -317,12 +179,12 @@ function drawPlayers(gs, ctx) {
            drawCrown(ctx, player);
         }
         
-        //Write the number of flys eaton on the player
+        //Write the number of flys eaten on the player
         if(player.flysEaten > 0){
             ctx.fillStyle = 'white';
             ctx.font = 'bold ' + (player.radius) + 'px Arial';
             ctx.textAlign = 'center';
-            ctx.fillText(player.flysEaten , player.xloc, player.yloc );
+            ctx.fillText(player.flysEaten , player.xloc, player.yloc + (player.radius / 3));
         }
 
         // Store the player's current position
@@ -370,6 +232,13 @@ function movePlayer(direction){
     }));
 }
 
+function hexToRgb(hex) {
+    let r = parseInt(hex.slice(1, 3), 16);
+    let g = parseInt(hex.slice(3, 5), 16);
+    let b = parseInt(hex.slice(5, 7), 16);
+    return 'rgb(' + r + ', ' + g + ', ' + b + ')';
+}
+
 function handlePlayerMovement(e){
     switch(e.which) {
         case 37: // left arrow key
@@ -405,32 +274,27 @@ $(document).keyup(function(e) {
     keys[e.which] = false;
 });
 
-
 $(document).ready(function() {
-    $('#startGameButton').click(function() {
-        console.log("Starting Game");
-        socket.send(JSON.stringify({
-            type:"startGame"
-        }));
-    });
+    $('#joinGameButton').click(function() {
 
-    for (let i = 1; i <= 5; i++) {
-        $('#player' + i + 'Btn').click(function() {
-            $('#player' + i + 'Btn').removeClass('btn-outline-primary').addClass('btn-success').attr('disabled', true);
-            $('#player' + i + 'Name').addClass('is-valid').attr('disabled', true);
-            var playerChosenName = $('#player' + i + 'Name').val();
-            if(playerChosenName == ""){
-                playerChosenName = "Player " + i;
-                $('#player' + i + 'Name').val(playerChosenName);
-            }
-            console.log('Player ' + i + ' Is Ready To Play as ' + playerChosenName + '!');
-            socket.send(JSON.stringify({
-                type:"playerLogin",
-                name: playerChosenName,
-                id:playerId
-            }));
-        });
-    }
+        var playerColorName = $('#playerColor option:selected').text();
+        var playerColorHex = $('#playerColor').val();
+
+        const randId = Date.now();
+        playerId = randId;
+
+        console.log('Player is joining the game as player ' + playerId + " ("+ playerColorName + ')!');
+        
+        socket.send(JSON.stringify({
+            type:"playerJoined",
+            color: playerColorHex,
+            name: playerColorName,
+            id:playerId
+        }));
+
+        $('#playerColor').attr('disabled', true);
+        $('#joinGameButton').attr('disabled', true);
+    });
 
 });
 

@@ -3,19 +3,26 @@ const WebSocket = require('ws');
 const wss = new WebSocket.Server({ port: 8080 });
 
 var gs = {
-    state: 'lobby', // lobby, playing, gameover
-    players:[
-        { xloc: (200 - 10), yloc: 100, flysEaten:0, isKing:false, speed: 6, direction: "down", radius: 10, color: 'rgb(10, 87, 209)',  name: '', isPlayer: false, isReady: false, isAlive: false },
-        { xloc: (1000 - 10),yloc: 100, flysEaten:0, isKing:false, speed: 6, direction: "down", radius: 10, color: 'rgb(62, 212, 57)',  name: '', isPlayer: false, isReady: false, isAlive: false },
-        { xloc: (400 - 10), yloc: 100, flysEaten:0, isKing:false, speed: 6, direction: "down", radius: 10, color: 'rgb(224, 170, 34)', name: '', isPlayer: false, isReady: false, isAlive: false },
-        { xloc: (800 - 10), yloc: 100, flysEaten:0, isKing:false, speed: 6, direction: "down", radius: 10, color: 'rgb(175, 87, 247)', name: '', isPlayer: false, isReady: false, isAlive: false },
-        { xloc: (600 - 10), yloc: 100, flysEaten:0, isKing:false, speed: 6, direction: "down", radius: 10, color: 'rgb(245, 51, 219)', name: '', isPlayer: false, isReady: false, isAlive: false }
-    ],
+    state: 'playing',
+    players:[],
+    playerObject:{
+        id:-1,
+        xloc: (600 - 10), 
+        yloc: 100, 
+        flysEaten:0, 
+        isKing:false, 
+        speed: 6, 
+        direction: "down", 
+        radius: 10, 
+        color: 'rgb(245, 51, 219)', 
+        name: ''
+    },
     enemy:{
         xloc: 600, 
         yloc: 480,  
         direction:"up", 
-        radius: 35, color: 'rgb(255, 48, 48)', 
+        radius: 35, 
+        color: 'rgb(229, 57, 53)', 
         name: 'X  X',
         speed:1,
         direction: getRandomDiagonalDirection()
@@ -29,7 +36,15 @@ var gs = {
         name: 'FLY',
         lastDeathTime:0
     },
-    colors: ['blue', 'red', 'green', 'orange', 'purple'],
+    colors: [
+        {hex: "#512DA8",name: "Purple"},
+        {hex: "#FB8C00",name: "Orange"},
+        {hex: "#EC407A",name: "Pink" },
+        {hex: "#FFCA28",name: "Yellow"},
+        {hex: "#388E3C",name: "Green"},
+        {hex: "#1E88E5",name: "Blue"},
+        {hex: "#5D4037",name: "Brown"}
+    ],
     winMessage:"",
     playTime:0,
     levelUpTimeInSeconds: 10,
@@ -52,71 +67,69 @@ wss.on('connection', (ws) => {
     ws.on('message', (message) => {
         message = JSON.parse(message);
 
-        if(message.type == "reservePlayerSpot"){
-            console.log("Reserving Player Spot: " + message.id);
-            gs.players[message.id - 1].isPlayer = true;
-            users.set(ws, message.id);
+        if (message.type == "playerJoined") {
+            console.log("Player " + message.id + " joining as: " + message.name);
+            let newPlayer = JSON.parse(JSON.stringify(gs.playerObject));
+            spawnPlayer(newPlayer,message);
+            users.set(ws, newPlayer.id);
         }
 
-        if(message.type == "playerLogin"){
-            console.log("Player "+ message.id +" ready as: " + message.name);
-            gs.players[message.id - 1].name = message.name;
-            gs.players[message.id - 1].isReady = true;
-        }
-
-        if(message.type == "startGame"){
-            for(var i = 0; i < gs.players.length; i++){
-                if(gs.players[i].isPlayer && gs.players[i].isReady)
-                    gs.players[i].isAlive = true;
+        if (message.type == "movePlayer") {
+            for (let i = 0; i < gs.players.length; i++) {
+                if (gs.players[i].id === message.id) {
+                    gs.players[i].direction = message.direction;
+                    break;
+                }
             }
-            gs.state = "playing";
         }
-        
-        if(message.type == "movePlayer"){
-            gs.players[message.id - 1].direction = message.direction;
-        }
-
-        if(message.type == "resetGame"){
-            handleGameOver();
-        }
-
     });
 
     //A user has disconnected
     ws.on('close', function() {
-        console.log('Connection closed');
-        console.log('User id ' + users.get(ws) + ' disconnected');
-        gs.players[users.get(ws) - 1].isPlayer = false;
-        gs.players[users.get(ws) - 1].isReady = false; 
-        gs.players[users.get(ws) - 1].name = "Disconnected";
+        var id = users.get(ws);
         users.delete(ws);
-        if(users.size === 0) {
-            console.log('All clients disconnected... resetting game state');
-            resetGameState();
+        if(id != undefined){
+            console.log(id + " has disconnected");
+            for (let i = 0; i < gs.players.length; i++) {
+                if (gs.players[i].id === id) {
+                    gs.players.splice(i, 1);
+                    break;
+                }
+            }
         }
     });
 
 });
 
-function handleGameOver(){
-    for(var i = 0; i < gs.players.length; i++){
-        gs.players[i].isReady = false;
-        gs.players[i].direction = "down";
-        gs.players[i].isKing = false;
-        gs.players[i].flysEaten = 0;
-        gs.players[i].xloc = defaultGameState.players[i].xloc;
-        gs.players[i].yloc = defaultGameState.players[i].yloc;
-        gs.players[i].speed = defaultGameState.players[i].speed;
-        gs.players[i].radius = defaultGameState.players[i].radius;
-    }
-    gs.playTime = 0;
-    gs.enemy = JSON.parse(JSON.stringify(defaultGameState.enemy)); 
-    gs.enemy.direction = getRandomDiagonalDirection();
-    gs.fly = JSON.parse(JSON.stringify(defaultGameState.fly));
+function spawnPlayer(player,message){
+    var xloc, yloc;
+    var enemy = gs.enemy;
+    var fly = gs.fly;
+
+    do {
+        xloc = Math.floor(Math.random() * (canvas.width - 2 * player.radius)) + player.radius;
+        yloc = Math.floor(Math.random() * (canvas.height - 2 * player.radius)) + player.radius;
+    } while (Math.abs(xloc - enemy.x) < 1000 && Math.abs(yloc - enemy.y) < 1000 && Math.abs(xloc - fly.x) < 300 && Math.abs(yloc - fly.y) < 300);
+
+    player.xloc = xloc;
+    player.yloc = yloc;
+
+    player.color = message.color;
+    player.name = message.name;
+    player.id = message.id;
+    gs.players.push(player);
 }
 
+//While there are no players in the game,
+//Keep the enemy speed at its default value and the play clock at 0
 function resetGameState(){
-    gs = JSON.parse(JSON.stringify(defaultGameState));
+    gs.enemy.speed = JSON.parse(JSON.stringify(defaultGameState.enemy.speed));
+    gs.playTime = 0;
+}
+
+function checkForEmptyGameToReset(){
+    if (gs.players.length === 0)
+        resetGameState();
 }
 
 function getRandomDiagonalDirection () {
@@ -189,8 +202,6 @@ function updatePlayerLocations(){
         //Increase to allow them more time out of frame (5 is about half the player)
         var teleportAdjustment = 2.5;
 
-        if(currPlayer.isAlive == false) // If a played has died, do not bother moving them.
-            continue;
         if(currPlayer.direction == "right"){
             if(currPlayer.xloc < canvas.width - playerRadius / teleportAdjustment)
                 currPlayer.xloc += playerSpeed;
@@ -224,8 +235,6 @@ function checkForCollisions() {
         for (var j = i + 1; j < gs.players.length; j++) {
             var player1 = gs.players[i];
             var player2 = gs.players[j];
-            if(player1.isAlive == false || player2.isAlive == false)
-                continue;
             if(player1.isKing || player2.isKing){
                 var dx = player1.xloc - player2.xloc;
                 var dy = player1.yloc - player2.yloc;
@@ -235,10 +244,12 @@ function checkForCollisions() {
                     if(player1.isKing){
                         playerAtePlayer(player1);
                         playerDied(player2);
+                        return;
                     }
                     else if(player2.isKing){
                         playerAtePlayer(player2);
                         playerDied(player1);
+                        return;
                     }
                 }
             }
@@ -248,8 +259,9 @@ function checkForCollisions() {
         checkIfPlayerCollidedWithFly(gs.players[i]);
     }
 }
+
 function checkIfPlayerCollidedWithEnemy(player) {
-    if (player.isAlive) {
+    if(player != undefined){
         var dx = player.xloc - gs.enemy.xloc;
         var dy = player.yloc - gs.enemy.yloc;
         var distance = Math.sqrt(dx * dx + dy * dy);
@@ -261,7 +273,7 @@ function checkIfPlayerCollidedWithEnemy(player) {
 }
 
 function checkIfPlayerCollidedWithFly(player) {
-    if (player.isAlive && gs.fly.isAlive) {
+    if (player != undefined && gs.fly.isAlive) {
         var dx = player.xloc - gs.fly.xloc;
         var dy = player.yloc - gs.fly.yloc;
         var distance = Math.sqrt(dx * dx + dy * dy);
@@ -284,12 +296,7 @@ function playerAteFly(player){
     else
         player.speed -= 0.5;
 
-    if (player.flysEaten > 0) {
-        var maxFliesEaten = Math.max(...gs.players.map(player => player.flysEaten));
-        if (player.flysEaten >= maxFliesEaten) {
-            player.isKing = true;
-        }
-    }
+    evaluateKingTadpole(player);
 }
 
 //Players count as 3 flys eaten
@@ -301,32 +308,28 @@ function playerAtePlayer(player){
         player.speed = 1;
     else
         player.speed -= (gs.flyEatenSpeedDecrement*3);
+
+    evaluateKingTadpole(player);
+}
+
+function evaluateKingTadpole(player){
+    if (player.flysEaten > 0) {
+        var maxFliesEaten = Math.max(...gs.players.map(player => player.flysEaten));
+        if (player.flysEaten >= maxFliesEaten) {
+            player.isKing = true;
+            gs.players.forEach(p => {
+                if (p !== player) {
+                    p.isKing = false;
+                }
+            });
+        }
+    }
 }
 
 function playerDied(player){
-    player.isAlive = false;
-    player.xloc = -1000;
-    player.yloc = -1000;
-}
-
-function checkForGameOver(){
-    var alivePlayers = gs.players.filter(player => player.isAlive);
-    // if (alivePlayers.length === 1) {
-    //     gs.state = 'gameover';
-    //     gs.winMessage = alivePlayers[0].name + " wins as the last player left alive!"
-    // }
-    if (alivePlayers.length === 0) {
-        gs.state = 'gameover';
-        gs.winMessage = "Nobody Wins!";
-        console.log("Game Over!");
-    }
-
-    var flysToWin = 10;
-    var playerWithEnoughFlies = gs.players.find(player => player.flysEaten >= flysToWin);
-    if (playerWithEnoughFlies) {
-        console.log(playerWithEnoughFlies.name + " has eaten 10 flys and wins!");
-        gs.state = 'gameover';
-        gs.winMessage = playerWithEnoughFlies.name + " wins with " + playerWithEnoughFlies.flysEaten + " flys eaten!";
+    const index = gs.players.indexOf(player);
+    if (index !== -1) {
+        gs.players.splice(index, 1);
     }
 }
 
@@ -334,7 +337,7 @@ function checkForGameOver(){
 function spawnFly(){
     var secondToSpawnFlyAfterLastDeath = 3; // Seconds to spawn the fly after its last death.
     var flySpawnMargin = 35; // Cannot spawn this close to edge.
-    var playerRadius = 200; // Cannot spawn this close to a player.
+    var playerRadius = 300; // Cannot spawn this close to a player.
 
     if (!gs.fly.isAlive && gs.playTime - gs.fly.lastDeathTime >= (60 * secondToSpawnFlyAfterLastDeath)) {
         var validSpawn = false;
@@ -365,22 +368,29 @@ function spawnFly(){
 
 function updatePlayTime(){
     gs.playTime += 1;
-    if(gs.playTime % (60 * gs.levelUpTimeInSeconds) == 0){ 
-        gs.enemy.speed += 1;
-        console.log("Enemy Speed Increased to: " + gs.enemy.speed);
+}
+
+function adjustEnemySpeed(){
+    let maxFlysEaten = 0;
+    for (const player of gs.players) {
+        if (player.flysEaten > maxFlysEaten) {
+            maxFlysEaten = player.flysEaten;
+        }
     }
+    gs.enemy.speed = maxFlysEaten + 1;
 }
 
 //Send the current game state to all clients every 100ms
 setInterval(function() {
-    if(gs.state == "playing"){
-        checkForCollisions();
-        checkForGameOver();
-        updatePlayerLocations();
-        updateEnemyLocation();
-        spawnFly();
-        updatePlayTime();
-    }
+    checkForEmptyGameToReset();
+
+    checkForCollisions();
+    updatePlayerLocations();
+    updateEnemyLocation();
+    adjustEnemySpeed();
+    spawnFly();
+
+    updatePlayTime();
 
     wss.clients.forEach((client) => {
         if (client.readyState === WebSocket.OPEN) {
