@@ -17,6 +17,7 @@ function handleServerMessage(message) {
     if(onLoad)
         getColors(gs);
     
+    
     checkForPlayerDeath(gs);
     disableJoinIfNoColorChosen();
 }
@@ -104,19 +105,25 @@ function drawBorder(gs, ctx) {
 function drawFly(gs, ctx) {
     // Draw the fly
     var fly = gs.fly;
-    if(fly.isAlive){
-        ctx.fillStyle = 'black';
-        ctx.beginPath();
-        ctx.moveTo(fly.xloc, fly.yloc - fly.radius);
-        for (var i = 1; i <= 5; i++) {
-            var angle = (i * 2 * Math.PI / 5) - (Math.PI / 2);
-            var x = fly.xloc + Math.cos(angle) * fly.radius;
-            var y = fly.yloc + Math.sin(angle) * fly.radius;
-            ctx.lineTo(x, y);
-        }
-        ctx.closePath();
-        ctx.fill();
+    if (fly.isAlive) {
+        var flyImage = new Image();
+        flyImage.src = 'fly_small.png';
+        ctx.drawImage(flyImage, fly.xloc - fly.radius, fly.yloc - fly.radius, fly.radius * 2, fly.radius * 2);
     }
+    // var fly = gs.fly;
+    // if(fly.isAlive){
+    //     ctx.fillStyle = 'black';
+    //     ctx.beginPath();
+    //     ctx.moveTo(fly.xloc, fly.yloc - fly.radius);
+    //     for (var i = 1; i <= 5; i++) {
+    //         var angle = (i * 2 * Math.PI / 5) - (Math.PI / 2);
+    //         var x = fly.xloc + Math.cos(angle) * fly.radius;
+    //         var y = fly.yloc + Math.sin(angle) * fly.radius;
+    //         ctx.lineTo(x, y);
+    //     }
+    //     ctx.closePath();
+    //     ctx.fill();
+    // }
 }
 
 var previousEnemyPositions = [];
