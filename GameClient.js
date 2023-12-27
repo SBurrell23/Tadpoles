@@ -4,30 +4,70 @@ socket.addEventListener('open', function () {
         handleServerMessage(event.data);
     });
     requestAnimationFrame(gameLoop);
+
 });
 
 var globalState = null;
 var playerId = -1;
 var onLoad = true;
 
+var sounds  = {
+    flyEaten: new Audio('assets/flyEaten.wav'),
+    enemyBounce: new Audio('assets/enemyBounce.wav'),
+    playerEaten: new Audio('assets/playerEaten.wav'),
+    playerCollidedWithEnemy: new Audio('assets/playerCollidedWithEnemy.wav')
+}
+
 function handleServerMessage(message) {
     var gs = JSON.parse(message);
     globalState = gs;
     //console.log(gs);
+
+    if (gs.type && gs.type == "soundEffect"){
+        handleSounds(gs);
+        return;
+    }
+
     if(onLoad)
         getColors(gs);
-    
-    
+
+    // C:\Users\yungs\Platformer_Project\Assets\8bit16bitSFXGamePack
     checkForPlayerDeath(gs);
     disableJoinIfNoColorChosen();
 }
 
 function gameLoop(gs) {
     var gs = globalState;
-    if (gs) {
+
+    if (gs && gs.type == "update") {
         drawGameState(gs);
     }
     requestAnimationFrame(gameLoop); // schedule next game loop
+}
+
+function handleSounds(gs){
+    if(gs.sound == "flyEaten"){
+        playSound("flyEaten");
+    }
+    if(gs.sound == "enemyBounce"){
+        playSound("enemyBounce");
+    }    
+    if(gs.sound == "playerEaten"){
+        playSound("playerEaten");
+    }    
+    if(gs.sound == "playerCollidedWithEnemy"){
+        playSound("playerCollidedWithEnemy");
+    }    
+}
+
+function playSound(soundName){
+    // Stop the sound if it's currently playing
+    if (!sounds[soundName].paused) {
+        sounds[soundName].pause();
+        sounds[soundName].currentTime = 0;
+    }
+    sounds[soundName].play();
+
 }
 
 function getColors(gs){
@@ -48,11 +88,11 @@ function disableJoinIfNoColorChosen(){
 }
 
 function checkForPlayerDeath(gs){
-    if (!gs.players.some(player => player.id === playerId)) {
+    if (gs.players && !gs.players.some(player => player.id === playerId)) {
         previousPositions = [];
         $('#playerColor').prop('disabled', false);
         $('#joinGameButton').prop('disabled', false);
-    }else{
+    } else {
         $('#playerColor').attr('disabled', true);
         $('#joinGameButton').attr('disabled', true);
     }
@@ -83,9 +123,9 @@ function drawPond(gs, ctx) {
             const y = row * squareSize;
 
             if ((row + col) % 2 === 0) {
-                ctx.fillStyle = '#A7FFFE';
+                ctx.fillStyle = '#c2d9ff';
             } else {
-                ctx.fillStyle = '#B4FFFD';
+                ctx.fillStyle = '#b3cffc';
             }
 
             ctx.fillRect(x, y, squareSize, squareSize);
@@ -105,25 +145,19 @@ function drawBorder(gs, ctx) {
 function drawFly(gs, ctx) {
     // Draw the fly
     var fly = gs.fly;
-    if (fly.isAlive) {
-        var flyImage = new Image();
-        flyImage.src = 'fly_small.png';
-        ctx.drawImage(flyImage, fly.xloc - fly.radius, fly.yloc - fly.radius, fly.radius * 2, fly.radius * 2);
+    if(fly && fly.isAlive){
+        ctx.fillStyle = 'black';
+        ctx.beginPath();
+        ctx.moveTo(fly.xloc, fly.yloc - fly.radius);
+        for (var i = 1; i <= 5; i++) {
+            var angle = (i * 2 * Math.PI / 5) - (Math.PI / 2);
+            var x = fly.xloc + Math.cos(angle) * fly.radius;
+            var y = fly.yloc + Math.sin(angle) * fly.radius;
+            ctx.lineTo(x, y);
+        }
+        ctx.closePath();
+        ctx.fill();
     }
-    // var fly = gs.fly;
-    // if(fly.isAlive){
-    //     ctx.fillStyle = 'black';
-    //     ctx.beginPath();
-    //     ctx.moveTo(fly.xloc, fly.yloc - fly.radius);
-    //     for (var i = 1; i <= 5; i++) {
-    //         var angle = (i * 2 * Math.PI / 5) - (Math.PI / 2);
-    //         var x = fly.xloc + Math.cos(angle) * fly.radius;
-    //         var y = fly.yloc + Math.sin(angle) * fly.radius;
-    //         ctx.lineTo(x, y);
-    //     }
-    //     ctx.closePath();
-    //     ctx.fill();
-    // }
 }
 
 var previousEnemyPositions = [];
@@ -154,7 +188,7 @@ function drawEnemy(gs, ctx) {
     ctx.textAlign = 'center';
     ctx.fillText(enemy.name, enemy.xloc, enemy.yloc - 8);
     ctx.font = 'bold 24px Arial';
-    ctx.fillText((gs.enemy.speed), enemy.xloc, enemy.yloc + 20);
+    ctx.fillText((gs.enemy.level), enemy.xloc, enemy.yloc + 20);
 
     // Store the enemy's current position
     previousEnemyPositions.push({ x: enemy.xloc, y: enemy.yloc });
@@ -182,7 +216,7 @@ function drawPlayers(gs, ctx) {
             var color = playerRGB.replace(')', ', ' + alpha + ')').replace('rgb', 'rgba');
             ctx.fillStyle = color;
             ctx.beginPath();
-            ctx.arc(pos.x, pos.y, player.radius, 0, Math.PI * 2, false);
+            ctx.arc(pos.x, pos.y,player.radius, 0, Math.PI * 2, false);
             ctx.fill();
         }
 

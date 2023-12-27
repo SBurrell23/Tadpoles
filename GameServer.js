@@ -4,6 +4,7 @@ const wss = new WebSocket.Server({ port: 8080 });
 
 var gs = {
     state: 'playing',
+    type: "update",
     players:[],
     playerObject:{
         id:-1,
@@ -11,9 +12,9 @@ var gs = {
         yloc: 100, 
         flysEaten:0, 
         isKing:false, 
-        speed: 6, 
+        speed: 5, 
         direction: "down", 
-        radius: 10, 
+        radius: 9, 
         color: 'rgb(245, 51, 219)', 
         name: ''
     },
@@ -21,20 +22,22 @@ var gs = {
         xloc: 600, 
         yloc: 480,  
         direction:"up", 
-        radius: 35, 
+        radius: 32, 
         color: 'rgb(229, 57, 53)', 
         name: 'X  X',
         speed:1,
-        direction: getRandomDiagonalDirection()
+        direction: getRandomDiagonalDirection(),
+        level:1
     },
     fly:{
-        xloc: -1500, 
-        yloc: -1500,
+        xloc: -2500, 
+        yloc: -2500,
         isAlive: false,
         radius: 10, 
         color: 'rgb(0, 0, 0)', 
         name: 'FLY',
-        lastDeathTime:0
+        lastDeathTime:0,
+        spawnTime:1 //Seconds between fly deaths
     },
     colors: [
         {hex: "#512DA8", name: "Purple"},
@@ -47,8 +50,9 @@ var gs = {
     ],
     winMessage:"",
     playTime:0,
-    levelUpTimeInSeconds: 10,
-    flyEatenSpeedDecrement: 0.8
+    flyEatenSpeedDecrement: 0.2, // how much ther player speed slows each fly
+    flyEatenRadiusIncrement: 1.5, // how much they grow
+    enemySpeedIncrement: .25 // how much faster the enemy gets for total flies eaten
 };
 
 var defaultGameState = JSON.parse(JSON.stringify(gs));
@@ -166,30 +170,38 @@ function updateEnemyLocation(){
             gs.enemy.xloc = enemyRadius;
             if (gs.enemy.direction === "up-left") {
                 gs.enemy.direction = "up-right";
+                sendAllClientsSound("enemyBounce");
             } else if (gs.enemy.direction === "down-left") {
                 gs.enemy.direction = "down-right";
+                sendAllClientsSound("enemyBounce");
             }
         } else if (gs.enemy.xloc > canvas.width - enemyRadius) {
             gs.enemy.xloc = canvas.width - enemyRadius;
             if (gs.enemy.direction === "up-right") {
                 gs.enemy.direction = "up-left";
+                sendAllClientsSound("enemyBounce");
             } else if (gs.enemy.direction === "down-right") {
                 gs.enemy.direction = "down-left";
+                sendAllClientsSound("enemyBounce");
             }
         }
         if (gs.enemy.yloc < enemyRadius) {
             gs.enemy.yloc = enemyRadius;
             if (gs.enemy.direction === "up-left") {
                 gs.enemy.direction = "down-left";
+                sendAllClientsSound("enemyBounce");
             } else if (gs.enemy.direction === "up-right") {
                 gs.enemy.direction = "down-right";
+                sendAllClientsSound("enemyBounce");
             }
         } else if (gs.enemy.yloc > canvas.height - enemyRadius) {
             gs.enemy.yloc = canvas.height - enemyRadius;
             if (gs.enemy.direction === "down-left") {
                 gs.enemy.direction = "up-left";
+                sendAllClientsSound("enemyBounce");
             } else if (gs.enemy.direction === "down-right") {
                 gs.enemy.direction = "up-right";
+                sendAllClientsSound("enemyBounce");
             }
         }
     }
@@ -270,6 +282,7 @@ function checkIfPlayerCollidedWithEnemy(player) {
         var distance = Math.sqrt(dx * dx + dy * dy);
         if (distance < player.radius + gs.enemy.radius) {
             console.log(player.name + " has collided with the enemy!");
+            sendAllClientsSound("playerCollidedWithEnemy"); 
             playerDied(player);
         }
     }
@@ -290,22 +303,24 @@ function checkIfPlayerCollidedWithFly(player) {
 }
 
 function playerAteFly(player){
+    sendAllClientsSound("flyEaten");
     player.flysEaten += 1;
-    player.radius += 3;
+    player.radius += gs.flyEatenRadiusIncrement;
 
     //Player speed cant go below 1
     if((player.speed - gs.flyEatenSpeedDecrement) < 1)
         player.speed = 1;
     else
-        player.speed -= 0.5;
+        player.speed -= gs.flyEatenSpeedDecrement;
 
     evaluateKingTadpole(player);
 }
 
 //Players count as 3 flys eaten
 function playerAtePlayer(player){
+    sendAllClientsSound("playerEaten");
     player.flysEaten += 3;
-    player.radius += 9;
+    player.radius += (gs.flyEatenRadiusIncrement * 3);
     //Player speed cant go below 1
     if((player.speed - (gs.flyEatenSpeedDecrement*3)) < 1)
         player.speed = 1;
@@ -341,9 +356,9 @@ function spawnFly(){
     if((gs.players.length === 0))
         return;
 
-    var secondToSpawnFlyAfterLastDeath = 3; // Seconds to spawn the fly after its last death.
+    var secondToSpawnFlyAfterLastDeath = gs.fly.spawnTime; // Seconds to spawn the fly after its last death.
     var flySpawnMargin = 35; // Cannot spawn this close to edge.
-    var playerRadius = 300; // Cannot spawn this close to a player.
+    var playerRadius = 400; // Cannot spawn this close to a player.
 
     if (!gs.fly.isAlive && gs.playTime - gs.fly.lastDeathTime >= (60 * secondToSpawnFlyAfterLastDeath)) {
         var validSpawn = false;
@@ -383,7 +398,21 @@ function adjustEnemySpeed(){
             maxFlysEaten = player.flysEaten;
         }
     }
-    gs.enemy.speed = maxFlysEaten + 1;
+    gs.enemy.level = maxFlysEaten + 1;
+    gs.enemy.speed = (maxFlysEaten * gs.enemySpeedIncrement) + 1;
+
+    gs.enemy.radius = 32 + (maxFlysEaten * 1.05);
+}
+
+function sendAllClientsSound(sound){
+    wss.clients.forEach((client) => {
+        if (client.readyState === WebSocket.OPEN) {
+            client.send(JSON.stringify({
+                type: "soundEffect",
+                sound: sound
+            }));
+        }
+    });
 }
 
 //Send the current game state to all clients every 100ms
