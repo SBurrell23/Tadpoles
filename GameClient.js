@@ -1,4 +1,4 @@
-const socket = new WebSocket('ws://tadpoles.onrender.com'); //stayaway.onrender.com
+const socket = new WebSocket('ws://localhost:8080'); //tadpoles.onrender.com
 socket.addEventListener('open', function () {
     socket.addEventListener('message', function (event) {
         handleServerMessage(event.data);
