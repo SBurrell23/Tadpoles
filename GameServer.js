@@ -3,6 +3,7 @@ const WebSocket = require('ws');
 const wss = new WebSocket.Server({ port: 8080 });
 
 var gs = {
+    v: "1.0",
     state: 'playing',
     type: "update",
     players:[],
