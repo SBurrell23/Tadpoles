@@ -1,4 +1,4 @@
-const socket = new WebSocket('wss://tadpoles.onrender.com'); //wss://tadpoles.onrender.com
+const socket = new WebSocket('ws://localhost:8080'); //wss://tadpoles.onrender.com
 socket.addEventListener('open', function () {
     socket.addEventListener('message', function (event) {
         handleServerMessage(event.data);
@@ -15,7 +15,8 @@ var sounds  = {
     flyEaten: new Audio('assets/flyEaten.wav'),
     enemyBounce: new Audio('assets/enemyBounce.wav'),
     playerEaten: new Audio('assets/playerEaten.wav'),
-    playerCollidedWithEnemy: new Audio('assets/playerCollidedWithEnemy.wav')
+    playerCollidedWithEnemy: new Audio('assets/playerCollidedWithEnemy.wav'),
+    flySpawned: new Audio('assets/flySpawned.wav')
 }
 
 function handleServerMessage(message) {
@@ -49,14 +50,19 @@ function handleSounds(gs){
     if(gs.sound == "flyEaten"){
         playSound("flyEaten");
     }
+    if(gs.sound == "flySpawned"){
+        playSound("flySpawned");
+    }
     if(gs.sound == "enemyBounce"){
         playSound("enemyBounce");
     }    
     if(gs.sound == "playerEaten"){
         playSound("playerEaten");
+        previousPositions = [];
     }    
     if(gs.sound == "playerCollidedWithEnemy"){
         playSound("playerCollidedWithEnemy");
+        previousPositions = [];
     }    
 }
 
@@ -89,7 +95,6 @@ function disableJoinIfNoColorChosen(){
 
 function checkForPlayerDeath(gs){
     if (gs.players && !gs.players.some(player => player.id === playerId)) {
-        previousPositions = [];
         $('#playerColor').prop('disabled', false);
         $('#joinGameButton').prop('disabled', false);
     } else {
@@ -113,24 +118,14 @@ function drawGameState(gs) {
 }
 
 function drawPond(gs, ctx) {
-    const squareSize = 10;
-    const numRows = Math.ceil(ctx.canvas.height / squareSize);
-    const numCols = Math.ceil(ctx.canvas.width / squareSize);
+    const image = new Image();
+    image.src = 'assets/water.png';
 
-    for (let row = 0; row < numRows; row++) {
-        for (let col = 0; col < numCols; col++) {
-            const x = col * squareSize;
-            const y = row * squareSize;
-
-            if ((row + col) % 2 === 0) {
-                ctx.fillStyle = '#c2d9ff';
-            } else {
-                ctx.fillStyle = '#b3cffc';
-            }
-
-            ctx.fillRect(x, y, squareSize, squareSize);
-        }
-    }
+    image.onload = function() {
+        const pattern = ctx.createPattern(image, 'repeat');
+        ctx.fillStyle = pattern;
+        ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+    };
 }
 
 function drawBorder(gs, ctx) {
@@ -176,6 +171,7 @@ function drawEnemy(gs, ctx) {
         ctx.fill();
     }
     
+
     ctx.beginPath();
     ctx.arc(enemy.xloc, enemy.yloc, enemy.radius, 0, Math.PI * 2, false);
     ctx.fillStyle = enemy.color;
@@ -184,11 +180,9 @@ function drawEnemy(gs, ctx) {
 
     // Write enemy name on top of the player
     ctx.fillStyle = 'black';
-    ctx.font = 'bold 16px Indie Flower';
+    ctx.font = 'bold '+(enemy.radius/1.3)+'px Arial';
     ctx.textAlign = 'center';
-    ctx.fillText(enemy.name, enemy.xloc, enemy.yloc - 8);
-    ctx.font = 'bold 24px Arial';
-    ctx.fillText((gs.enemy.level), enemy.xloc, enemy.yloc + 20);
+    ctx.fillText((gs.enemy.level), enemy.xloc, enemy.yloc + (enemy.radius / 3.5));
 
     // Store the enemy's current position
     previousEnemyPositions.push({ x: enemy.xloc, y: enemy.yloc });
@@ -211,7 +205,7 @@ function drawPlayers(gs, ctx) {
         }
         for (var j = 0; j < previousPositions[i].length; j++) {
             var pos = previousPositions[i][j];
-            var alpha = .5 * (j / previousPositions[i].length); // Adjust alpha as needed
+            var alpha = .35 * (j / previousPositions[i].length); // Adjust alpha as needed
             var playerRGB = hexToRgb(player.color);
             var color = playerRGB.replace(')', ', ' + alpha + ')').replace('rgb', 'rgba');
             ctx.fillStyle = color;
@@ -234,7 +228,7 @@ function drawPlayers(gs, ctx) {
         //Write the number of flys eaten on the player
         if(player.flysEaten > 0){
             ctx.fillStyle = 'white';
-            ctx.font = 'bold ' + (player.radius) + 'px Arial';
+            ctx.font = 'bold ' + (player.radius/1.05) + 'px Arial';
             ctx.textAlign = 'center';
             ctx.fillText(player.flysEaten , player.xloc, player.yloc + (player.radius / 3));
         }
@@ -242,8 +236,8 @@ function drawPlayers(gs, ctx) {
         // Store the player's current position
         previousPositions[i].push({ x: player.xloc, y: player.yloc });
 
-        // If there are more than 25 positions stored, remove the oldest one
-        if (previousPositions[i].length > 25) {
+        // If there are more than 35 positions stored, remove the oldest one
+        if (previousPositions[i].length > 35) {
             previousPositions[i].shift();
         }
     }
@@ -317,7 +311,12 @@ function handlePlayerMovement(e){
 
 var keys = {};
 $(document).keydown(function(e) {
-    if (!keys[e.which] && globalState.state == "playing") {
+    if (e.which == 32) { // Spacebar
+        if (!$('#joinGameButton').is(':disabled') && $('#playerColor').val() != null && $('#playerColor').val() != "")
+            $('#joinGameButton').click();
+        e.preventDefault();
+    }
+    else if (!keys[e.which]) {
         keys[e.which] = true;
         handlePlayerMovement(e);
     }

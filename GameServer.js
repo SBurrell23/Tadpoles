@@ -37,7 +37,7 @@ var gs = {
         color: 'rgb(0, 0, 0)', 
         name: 'FLY',
         lastDeathTime:0,
-        spawnTime:1 //Seconds between fly deaths
+        spawnTime:2 //Seconds between fly deaths
     },
     colors: [
         {hex: "#512DA8", name: "Purple"},
@@ -50,8 +50,8 @@ var gs = {
     ],
     winMessage:"",
     playTime:0,
-    flyEatenSpeedDecrement: 0.2, // how much ther player speed slows each fly
-    flyEatenRadiusIncrement: 1.5, // how much they grow
+    flyEatenSpeedDecrement: 0.15, // how much ther player speed slows each fly
+    flyEatenRadiusIncrement: 1.6, // how much they grow
     enemySpeedIncrement: .25 // how much faster the enemy gets for total flies eaten
 };
 
@@ -59,7 +59,7 @@ var defaultGameState = JSON.parse(JSON.stringify(gs));
 
 //This needs to match what is in the client
 var canvas = {
-    width: 1200,
+    width: 1300,
     height: 700
 };
 
@@ -106,7 +106,7 @@ wss.on('connection', (ws) => {
 
 });
 
-function spawnPlayer(player,message){
+function spawnPlayer(player, message) {
     var xloc, yloc;
     var enemy = gs.enemy;
     var fly = gs.fly;
@@ -114,7 +114,13 @@ function spawnPlayer(player,message){
     do {
         xloc = Math.floor(Math.random() * (canvas.width - 2 * player.radius)) + player.radius;
         yloc = Math.floor(Math.random() * (canvas.height - 2 * player.radius)) + player.radius;
-    } while (Math.abs(xloc - enemy.x) < 500 && Math.abs(yloc - enemy.y) < 500 && Math.abs(xloc - fly.x) < 300 && Math.abs(yloc - fly.y) < 300);
+    } while (
+        Math.abs(xloc - enemy.x) < 500 &&
+        Math.abs(yloc - enemy.y) < 500 &&
+        Math.abs(xloc - fly.x) < 250 &&
+        Math.abs(yloc - fly.y) < 250 &&
+        gs.players.some(p => Math.abs(xloc - p.xloc) < 250 && Math.abs(yloc - p.yloc) < 250)
+    );
 
     player.xloc = xloc;
     player.yloc = yloc;
@@ -382,6 +388,7 @@ function spawnFly(){
         }
 
         gs.fly.isAlive = true;
+        sendAllClientsSound("flySpawned");
         gs.fly.xloc = flyX;
         gs.fly.yloc = flyY;
     }

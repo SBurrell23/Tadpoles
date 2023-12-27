@@ -13,13 +13,13 @@
 
 <style>
     html, body{
-        background-color: #8ab9ff
+        background-color: #b9e5ff
     }
     #joinGameButton{
         font-size: 24px;
         font-family: 'Dekko';
         width: 100%;
-        padding: 4px;
+        padding: 3px;
         padding-top:6px;
     }
     #playerColor{
@@ -36,6 +36,26 @@
         font-weight: bold;
         margin-bottom: 25px;
         margin-top:15px;
+    }
+    #rulesHeader{
+        font-family: 'Indie Flower';
+        font-size: 40px;
+        text-align: center;
+        font-weight: bold;
+        margin-top:55px;
+        margin-bottom:-10px;
+    }
+    #rulesList{
+        font-family: 'Dekko';
+        font-size: 22px;
+        text-align: center;
+        margin-top:15px;
+        list-style-type: none;
+        padding-left: 0px;
+        padding-right:0px;
+    }
+    #rulesList li{
+        margin-bottom: 15px;
     }
     .form-control:disabled {
         background-color: #dfdfdf;
@@ -55,11 +75,25 @@
             </select>
         </div><br>
         <div class="text-center">
-            <button id="joinGameButton" class="btn btn-success btn-lg" type="button">Join Game</button>
+            <button id="joinGameButton" class="btn btn-success btn-lg" type="button">Join Game
+                <div style="font-size:14px;margin-top:-6px;">[Spacebar]</div>
+            </button>
+        </div>
+        <div class="text-center">
+            <div id="rulesHeader">
+                Rules
+            </div>
+            <ul id="rulesList">   
+                <li>Use WASD or &larr;&rarr;&uarr;&darr; to move</li>
+                <li>Avoid the RED FISH</li>
+                <li>Eat the BLACK FLYS to grow</li>
+                <li>The KING TADPOLE can eat other tadpoles!</li>
+                <li>Become the KING OF THE POND!</li>
+            </ul>
         </div>
     </div>
     <div class="col-9">
-        <canvas id="canvas" width="1200" height="700" style="border-radius: 4px;"></canvas>
+        <canvas id="canvas" width="1300" height="700" style="border-radius: 4px;"></canvas>
     </div>
   </div>
 
@@ -78,6 +112,8 @@ NO FLY LIMIT OR HIGH MAX LIMIT.... ~ 25 ?
 
 LOBBY REDESIGN...
 SHOW HIGH SCORE LIST OF PLAYERS CURRENTLY IN THE GAME WITH FLYS EATEN/TIME PLAYED
-SHOW CURRENT KING TADPOLE -->
+SHOW CURRENT KING TADPOLE 
+
+-->
 
 
