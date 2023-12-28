@@ -1,4 +1,6 @@
-const socket = new WebSocket('wss://tadpoles.onrender.com'); //wss://tadpoles.onrender.com
+//wss://tadpoles.onrender.com
+// ws://localhost:8080
+const socket = new WebSocket('ws://localhost:8080'); 
 socket.addEventListener('open', function () {
     socket.addEventListener('message', function (event) {
         handleServerMessage(event.data);
@@ -118,14 +120,8 @@ function drawGameState(gs) {
 }
 
 function drawPond(gs, ctx) {
-    const image = new Image();
-    image.src = 'assets/water.png';
-
-    image.onload = function() {
-        const pattern = ctx.createPattern(image, 'repeat');
-        ctx.fillStyle = pattern;
-        ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-    };
+    ctx.fillStyle = '#aacdff';
+    ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 }
 
 function drawBorder(gs, ctx) {
