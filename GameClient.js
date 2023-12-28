@@ -1,6 +1,6 @@
-//wss://tadpoles.onrender.com
+// wss://tadpoles.onrender.com
 // ws://localhost:8080
-const socket = new WebSocket('ws://localhost:8080'); 
+const socket = new WebSocket('wss://tadpoles.onrender.com'); 
 socket.addEventListener('open', function () {
     socket.addEventListener('message', function (event) {
         handleServerMessage(event.data);
@@ -32,7 +32,7 @@ function handleServerMessage(message) {
     }
 
     if(onLoad)
-        getColors(gs);
+        getColors();
 
     // C:\Users\yungs\Platformer_Project\Assets\8bit16bitSFXGamePack
     checkForPlayerDeath(gs);
@@ -81,7 +81,17 @@ function playSound(soundName){
 function getColors(gs){
     var playerColorSelect = $('#playerColor');
 
-    gs.colors.forEach(function(color) {
+    var colors = [
+        {hex: "#512DA8", name: "Purple"},
+        {hex: "#FB8C00", name: "Orange"},
+        {hex: "#EC407A", name: "Pink"},
+        {hex: "#FFCA28", name: "Yellow"},
+        {hex: "#388E3C", name: "Green"},
+        {hex: "#1E88E5", name: "Blue"},
+        {hex: "#5D4037", name: "Brown"}
+    ];
+
+    colors.forEach(function(color) {
         var option = $("<option style='color:"+color.hex+"'></option>").val(color.hex).text(color.name);
         playerColorSelect.append(option);
     });

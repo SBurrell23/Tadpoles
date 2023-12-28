@@ -2,30 +2,28 @@ const WebSocket = require('ws');
 
 const wss = new WebSocket.Server({ port: 8080 });
 
+var playerObject= {
+    id:-1,
+    xloc: (600 - 10), 
+    yloc: 100, 
+    flysEaten:0, 
+    isKing:false, 
+    speed: 5, 
+    direction: "down", 
+    radius: 9, 
+    color: 'rgb(245, 51, 219)', 
+    name: ''
+};
+
 var gs = {
-    v: "1.0",
-    state: 'playing',
     type: "update",
     players:[],
-    playerObject:{
-        id:-1,
-        xloc: (600 - 10), 
-        yloc: 100, 
-        flysEaten:0, 
-        isKing:false, 
-        speed: 5, 
-        direction: "down", 
-        radius: 9, 
-        color: 'rgb(245, 51, 219)', 
-        name: ''
-    },
     enemy:{
         xloc: 600, 
         yloc: 480,  
         direction:"up", 
         radius: 32, 
-        color: 'rgb(229, 57, 53)', 
-        name: 'X  X',
+        color: 'rgb(229, 57, 53)',
         speed:1,
         direction: getRandomDiagonalDirection(),
         level:1
@@ -35,26 +33,16 @@ var gs = {
         yloc: -2500,
         isAlive: false,
         radius: 10, 
-        color: 'rgb(0, 0, 0)', 
-        name: 'FLY',
+        color: 'rgb(0, 0, 0)',
         lastDeathTime:0,
         spawnTime:2 //Seconds between fly deaths
     },
-    colors: [
-        {hex: "#512DA8", name: "Purple"},
-        {hex: "#FB8C00", name: "Orange"},
-        {hex: "#EC407A", name: "Pink"},
-        {hex: "#FFCA28", name: "Yellow"},
-        {hex: "#388E3C", name: "Green"},
-        {hex: "#1E88E5", name: "Blue"},
-        {hex: "#5D4037", name: "Brown"}
-    ],
-    winMessage:"",
-    playTime:0,
-    flyEatenSpeedDecrement: 0.15, // how much ther player speed slows each fly
-    flyEatenRadiusIncrement: 1.6, // how much they grow
-    enemySpeedIncrement: .25 // how much faster the enemy gets for total flies eaten
+    playTime:0
 };
+
+var flyEatenSpeedDecrement = 0.15; // how much ther player speed slows each fly
+var flyEatenRadiusIncrement = 1.6; // how much they grow
+var enemySpeedIncrement = .25; // how much faster the enemy gets for total flies eaten
 
 var defaultGameState = JSON.parse(JSON.stringify(gs));
 
@@ -74,7 +62,7 @@ wss.on('connection', (ws) => {
 
         if (message.type == "playerJoined") {
             console.log("Player " + message.id + " joining as: " + message.name);
-            let newPlayer = JSON.parse(JSON.stringify(gs.playerObject));
+            let newPlayer = JSON.parse(JSON.stringify(playerObject));
             spawnPlayer(newPlayer,message);
             users.set(ws, newPlayer.id);
         }
@@ -312,13 +300,13 @@ function checkIfPlayerCollidedWithFly(player) {
 function playerAteFly(player){
     sendAllClientsSound("flyEaten");
     player.flysEaten += 1;
-    player.radius += gs.flyEatenRadiusIncrement;
+    player.radius += flyEatenRadiusIncrement;
 
     //Player speed cant go below 1
-    if((player.speed - gs.flyEatenSpeedDecrement) < 1)
+    if((player.speed - flyEatenSpeedDecrement) < 1)
         player.speed = 1;
     else
-        player.speed -= gs.flyEatenSpeedDecrement;
+        player.speed -= flyEatenSpeedDecrement;
 
     evaluateKingTadpole(player);
 }
@@ -327,12 +315,12 @@ function playerAteFly(player){
 function playerAtePlayer(player){
     sendAllClientsSound("playerEaten");
     player.flysEaten += 3;
-    player.radius += (gs.flyEatenRadiusIncrement * 3);
+    player.radius += (flyEatenRadiusIncrement * 3);
     //Player speed cant go below 1
-    if((player.speed - (gs.flyEatenSpeedDecrement*3)) < 1)
+    if((player.speed - (flyEatenSpeedDecrement*3)) < 1)
         player.speed = 1;
     else
-        player.speed -= (gs.flyEatenSpeedDecrement*3);
+        player.speed -= (flyEatenSpeedDecrement*3);
 
     evaluateKingTadpole(player);
 }
@@ -407,7 +395,7 @@ function adjustEnemySpeed(){
         }
     }
     gs.enemy.level = maxFlysEaten + 1;
-    gs.enemy.speed = (maxFlysEaten * gs.enemySpeedIncrement) + 1;
+    gs.enemy.speed = (maxFlysEaten * enemySpeedIncrement) + 1;
 
     gs.enemy.radius = 32 + (maxFlysEaten * 1.05);
 }
@@ -440,4 +428,4 @@ setInterval(function() {
             client.send(JSON.stringify(gs));
         }
     });
-}, 10);
+}, 12);
