@@ -2,6 +2,12 @@
   "dependencies": {
     "pako": "^2.1.0",
     "ws": "^8.15.1",
-    "peerjs": "^1.5.2"
+    "peerjs": "^1.5.2",
+    "puppeteer": "^21.5.0",
+    "http-server": "^14.1.1"
+  },
+  "scripts": {
+    "test": "node test-game.js",
+    "start": "http-server -p 8080 -c-1"
   }
 }
