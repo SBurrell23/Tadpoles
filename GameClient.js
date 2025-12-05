@@ -93,15 +93,24 @@ function initializePeer() {
     });
 
     peer.on('error', function(err) {
+        // Suppress expected errors when trying to connect to non-existent host
+        const isHostConnectionError = (
+            err.peer === HOST_PEER_ID || 
+            (err.message && err.message.includes(HOST_PEER_ID)) ||
+            (err.toString && err.toString().includes(HOST_PEER_ID))
+        );
+        
+        if (isHostConnectionError && (err.type === 'peer-unavailable' || err.type === 'network' || err.message?.includes('Could not connect to peer'))) {
+            // This is expected when no host exists - we'll become the host
+            // Don't log as error, the timeout handler will take care of becoming host
+            return;
+        }
+        
+        // Log other unexpected errors
         console.error('Peer error:', err);
-        // If peer-unavailable and we're trying to connect to host, become host instead
-        if (err.type === 'peer-unavailable' && err.peer === HOST_PEER_ID) {
-            console.log('Host peer unavailable, becoming host...');
-            if (!isHost && !isBecomingHost) {
-                becomeHost();
-            }
-        } else if (err.type === 'network') {
-            // Retry connection for network errors
+        
+        if (err.type === 'network' && !isHostConnectionError) {
+            // Retry connection for network errors (not related to host connection)
             setTimeout(function() {
                 if (!isHost && !isBecomingHost) {
                     attemptToConnectAsHost();
@@ -123,6 +132,8 @@ function attemptToConnectAsHost() {
         if (isHost || isBecomingHost) return; // Already host or becoming host
         
         // Try to connect to the host
+        // Note: If host doesn't exist, PeerJS will log an error, but this is expected
+        // The timeout handler below will detect this and make us the host instead
         console.log('Attempting to connect to host...');
         const conn = peer.connect(HOST_PEER_ID, {
             reliable: true
@@ -150,8 +161,9 @@ function attemptToConnectAsHost() {
 
         conn.on('error', function(err) {
             clearTimeout(connectionTimeout);
-            console.log('Connection error, becoming host...', err);
+            // Connection error means host is not available - become host immediately
             if (!isHost && !isBecomingHost) {
+                console.log('Host connection failed, becoming host...');
                 becomeHost();
             }
         });
