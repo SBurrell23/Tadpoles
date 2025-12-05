@@ -15,6 +15,12 @@ var globalState = null;
 var playerId = -1;
 var onLoad = true;
 
+// Expose variables to window for testing
+window.isHost = isHost;
+window.hostConnection = hostConnection;
+window.globalState = globalState;
+window.gs = gs;
+
 var sounds = {
     flyEaten: new Audio('assets/flyEaten.wav'),
     enemyBounce: new Audio('assets/enemyBounce.wav'),
@@ -154,7 +160,20 @@ function attemptToConnectAsHost() {
             isHost = false;
             hostPeerId = HOST_PEER_ID;
             hostConnection = conn;
+            window.isHost = isHost; // Update window for testing
+            window.hostConnection = hostConnection; // Update window for testing
             setupPeerConnection(conn);
+            // Initialize globalState with empty game state if not set
+            if (!globalState) {
+                globalState = {
+                    type: "update",
+                    players: [],
+                    enemy: gs.enemy,
+                    fly: gs.fly,
+                    playTime: 0
+                };
+                window.globalState = globalState; // Update window for testing
+            }
             // Start rendering loop for client
             requestAnimationFrame(gameLoop);
         });
@@ -205,6 +224,7 @@ function becomeHost() {
         isBecomingHost = false;
         hostPeerId = HOST_PEER_ID;
         myPeerId = HOST_PEER_ID;
+        window.isHost = isHost; // Update window for testing
         
         // Close connection to old host if it exists
         if (hostConnection) {
@@ -280,10 +300,23 @@ function setupPeerConnection(conn) {
         console.error('Connection error:', err);
     });
 
-    if (isHost) {
-        peerConnections.set(conn.peer, conn);
-        // Send current game state to new peer
-        conn.send(JSON.stringify(gs));
+    // Wait for connection to open before sending data
+    if (conn.open) {
+        // Connection is already open
+        if (isHost) {
+            peerConnections.set(conn.peer, conn);
+            // Send current game state to new peer
+            conn.send(JSON.stringify(gs));
+        }
+    } else {
+        // Wait for connection to open
+        conn.on('open', function() {
+            if (isHost) {
+                peerConnections.set(conn.peer, conn);
+                // Send current game state to new peer
+                conn.send(JSON.stringify(gs));
+            }
+        });
     }
 }
 
@@ -335,9 +368,14 @@ function handleClientMessage(msg) {
         getColors();
     }
 
+    // Update global state with received game state
+    if (msg.type == "update") {
+        globalState = msg;
+        window.globalState = globalState; // Update window for testing
+    }
+    
     checkForPlayerDeath(msg);
     disableJoinIfNoColorChosen();
-    globalState = msg;
 }
 
 function sendToHost(data) {
@@ -380,9 +418,8 @@ function gameLoop() {
     if (!isHost) {
         // Client: just render
         var gs = globalState;
-        if (gs && gs.type == "update") {
-            drawGameState(gs);
-        }
+        // Always render, even if game state is empty (will show empty canvas)
+        drawGameState(gs);
         requestAnimationFrame(gameLoop);
         return;
     }
@@ -403,6 +440,9 @@ function gameLoop() {
 
     // Broadcast to all clients
     broadcastToAllClients(gs);
+    
+    // Update window for testing
+    window.gs = gs;
 
     // Also render locally
     drawGameState(gs);
@@ -777,18 +817,21 @@ function checkForPlayerDeath(gs) {
 }
 
 function drawGameState(gs) {
-    if (!gs) return; // Guard against undefined game state
-    
     var canvasElement = document.getElementById('canvas');
     if (!canvasElement) return; // Guard against canvas not being available
     
     var ctx = canvasElement.getContext('2d');
 
+    // Always draw the pond and border, even if game state is empty
     drawPond(gs, ctx);
-    drawFly(gs, ctx);
-    drawPlayers(gs, ctx);
-    drawEnemy(gs, ctx);
     drawBorder(gs, ctx);
+    
+    // Only draw game objects if game state exists
+    if (gs && gs.type == "update") {
+        drawFly(gs, ctx);
+        drawPlayers(gs, ctx);
+        drawEnemy(gs, ctx);
+    }
 }
 
 function drawPond(gs, ctx) {
