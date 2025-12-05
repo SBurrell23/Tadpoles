@@ -93,15 +93,24 @@ function initializePeer() {
     });
 
     peer.on('error', function(err) {
+        // Suppress expected errors when trying to connect to non-existent host
+        const isHostConnectionError = (
+            err.peer === HOST_PEER_ID || 
+            (err.message && err.message.includes(HOST_PEER_ID)) ||
+            (err.toString && err.toString().includes(HOST_PEER_ID))
+        );
+        
+        if (isHostConnectionError && (err.type === 'peer-unavailable' || err.type === 'network' || err.message?.includes('Could not connect to peer'))) {
+            // This is expected when no host exists - we'll become the host
+            // Don't log as error, the timeout handler will take care of becoming host
+            return;
+        }
+        
+        // Log other unexpected errors
         console.error('Peer error:', err);
-        // If peer-unavailable and we're trying to connect to host, become host instead
-        if (err.type === 'peer-unavailable' && err.peer === HOST_PEER_ID) {
-            console.log('Host peer unavailable, becoming host...');
-            if (!isHost && !isBecomingHost) {
-                becomeHost();
-            }
-        } else if (err.type === 'network') {
-            // Retry connection for network errors
+        
+        if (err.type === 'network' && !isHostConnectionError) {
+            // Retry connection for network errors (not related to host connection)
             setTimeout(function() {
                 if (!isHost && !isBecomingHost) {
                     attemptToConnectAsHost();
@@ -123,6 +132,8 @@ function attemptToConnectAsHost() {
         if (isHost || isBecomingHost) return; // Already host or becoming host
         
         // Try to connect to the host
+        // Note: If host doesn't exist, PeerJS will log an error, but this is expected
+        // The timeout handler below will detect this and make us the host instead
         console.log('Attempting to connect to host...');
         const conn = peer.connect(HOST_PEER_ID, {
             reliable: true
@@ -150,8 +161,9 @@ function attemptToConnectAsHost() {
 
         conn.on('error', function(err) {
             clearTimeout(connectionTimeout);
-            console.log('Connection error, becoming host...', err);
+            // Connection error means host is not available - become host immediately
             if (!isHost && !isBecomingHost) {
+                console.log('Host connection failed, becoming host...');
                 becomeHost();
             }
         });
@@ -376,6 +388,11 @@ function gameLoop() {
     }
 
     // Host: update game state
+    if (!gs) {
+        requestAnimationFrame(gameLoop);
+        return; // Wait for game state to be initialized
+    }
+    
     checkForEmptyGameToReset();
     checkForCollisions();
     updatePlayerLocations();
@@ -718,6 +735,12 @@ function playSound(soundName) {
 
 function getColors(gs) {
     var playerColorSelect = $('#playerColor');
+    
+    // Don't add colors if they're already added (prevent duplicates)
+    if (playerColorSelect.children().length > 1) {
+        onLoad = false;
+        return;
+    }
 
     var colors = [
         { hex: "#512DA8", name: "Purple" },
@@ -754,7 +777,12 @@ function checkForPlayerDeath(gs) {
 }
 
 function drawGameState(gs) {
-    var ctx = document.getElementById('canvas').getContext('2d');
+    if (!gs) return; // Guard against undefined game state
+    
+    var canvasElement = document.getElementById('canvas');
+    if (!canvasElement) return; // Guard against canvas not being available
+    
+    var ctx = canvasElement.getContext('2d');
 
     drawPond(gs, ctx);
     drawFly(gs, ctx);
@@ -778,8 +806,9 @@ function drawBorder(gs, ctx) {
 }
 
 function drawFly(gs, ctx) {
+    if (!gs || !gs.fly) return; // Guard against undefined game state or fly
     var fly = gs.fly;
-    if (fly && fly.isAlive) {
+    if (fly.isAlive) {
         ctx.fillStyle = 'black';
         ctx.beginPath();
         ctx.moveTo(fly.xloc, fly.yloc - fly.radius);
@@ -796,6 +825,7 @@ function drawFly(gs, ctx) {
 
 var previousEnemyPositions = [];
 function drawEnemy(gs, ctx) {
+    if (!gs || !gs.enemy) return; // Guard against undefined game state or enemy
     var enemy = gs.enemy;
 
     for (var j = 0; j < previousEnemyPositions.length; j++) {
@@ -828,6 +858,7 @@ function drawEnemy(gs, ctx) {
 
 var previousPositions = [];
 function drawPlayers(gs, ctx) {
+    if (!gs || !gs.players) return; // Guard against undefined game state or players
     for (var i = 0; i < gs.players.length; i++) {
         var player = gs.players[i];
 
@@ -950,6 +981,9 @@ $(document).keyup(function (e) {
 });
 
 $(document).ready(function () {
+    // Initialize color dropdown for both host and client
+    getColors();
+    
     $('#joinGameButton').click(function () {
         var playerColorName = $('#playerColor option:selected').text();
         var playerColorHex = $('#playerColor').val();
