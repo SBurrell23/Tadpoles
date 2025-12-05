@@ -69,10 +69,18 @@ async function testGame() {
     let pages = [];
     
     try {
-        // Launch browser
+        // Launch browser in headless mode for cloud environment
         browser = await puppeteer.launch({
-            headless: false, // Set to true for headless mode
-            args: ['--no-sandbox', '--disable-setuid-sandbox']
+            headless: true,
+            args: [
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--disable-dev-shm-usage',
+                '--disable-gpu',
+                '--no-first-run',
+                '--no-zygote',
+                '--single-process'
+            ]
         });
         
         console.log('Browser launched\n');
@@ -298,8 +306,9 @@ async function testGame() {
         console.log('\nNote: Keep browser windows open to observe the game running.');
         console.log('Press Ctrl+C to close the test.\n');
         
-        // Keep the browser open for observation
-        await new Promise(() => {}); // Wait indefinitely
+        // Close browser after tests complete
+        await browser.close();
+        console.log('\nBrowser closed. All tests completed successfully!');
         
     } catch (error) {
         console.error('Test error:', error);
