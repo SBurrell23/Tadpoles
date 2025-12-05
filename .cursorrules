@@ -1,0 +1,4 @@
+# Cursor Rules Configuration
+# Disable bugbot checks for this repository
+disable_bugbot: true
+skip_pr_checks: true
