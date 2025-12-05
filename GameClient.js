@@ -376,6 +376,11 @@ function gameLoop() {
     }
 
     // Host: update game state
+    if (!gs) {
+        requestAnimationFrame(gameLoop);
+        return; // Wait for game state to be initialized
+    }
+    
     checkForEmptyGameToReset();
     checkForCollisions();
     updatePlayerLocations();
@@ -754,7 +759,12 @@ function checkForPlayerDeath(gs) {
 }
 
 function drawGameState(gs) {
-    var ctx = document.getElementById('canvas').getContext('2d');
+    if (!gs) return; // Guard against undefined game state
+    
+    var canvasElement = document.getElementById('canvas');
+    if (!canvasElement) return; // Guard against canvas not being available
+    
+    var ctx = canvasElement.getContext('2d');
 
     drawPond(gs, ctx);
     drawFly(gs, ctx);
@@ -778,8 +788,9 @@ function drawBorder(gs, ctx) {
 }
 
 function drawFly(gs, ctx) {
+    if (!gs || !gs.fly) return; // Guard against undefined game state or fly
     var fly = gs.fly;
-    if (fly && fly.isAlive) {
+    if (fly.isAlive) {
         ctx.fillStyle = 'black';
         ctx.beginPath();
         ctx.moveTo(fly.xloc, fly.yloc - fly.radius);
@@ -796,6 +807,7 @@ function drawFly(gs, ctx) {
 
 var previousEnemyPositions = [];
 function drawEnemy(gs, ctx) {
+    if (!gs || !gs.enemy) return; // Guard against undefined game state or enemy
     var enemy = gs.enemy;
 
     for (var j = 0; j < previousEnemyPositions.length; j++) {
@@ -828,6 +840,7 @@ function drawEnemy(gs, ctx) {
 
 var previousPositions = [];
 function drawPlayers(gs, ctx) {
+    if (!gs || !gs.players) return; // Guard against undefined game state or players
     for (var i = 0; i < gs.players.length; i++) {
         var player = gs.players[i];
 
