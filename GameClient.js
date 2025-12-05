@@ -6,6 +6,7 @@ const HOST_PEER_ID = 'tadpoles-host'; // Fixed ID for the host
 let peer = null;
 let hostConnection = null;
 let isHost = false;
+let isBecomingHost = false; // Prevent multiple simultaneous attempts to become host
 let peerConnections = new Map(); // Map of peerId -> data connection
 let myPeerId = null;
 let hostPeerId = null;
@@ -93,10 +94,16 @@ function initializePeer() {
 
     peer.on('error', function(err) {
         console.error('Peer error:', err);
-        if (err.type === 'peer-unavailable' || err.type === 'network') {
-            // Retry connection
+        // If peer-unavailable and we're trying to connect to host, become host instead
+        if (err.type === 'peer-unavailable' && err.peer === HOST_PEER_ID) {
+            console.log('Host peer unavailable, becoming host...');
+            if (!isHost && !isBecomingHost) {
+                becomeHost();
+            }
+        } else if (err.type === 'network') {
+            // Retry connection for network errors
             setTimeout(function() {
-                if (!isHost) {
+                if (!isHost && !isBecomingHost) {
                     attemptToConnectAsHost();
                 }
             }, 1000);
@@ -113,7 +120,7 @@ function initializePeer() {
 function attemptToConnectAsHost() {
     // Wait a moment to see if host becomes available
     setTimeout(function() {
-        if (isHost) return; // Already became host
+        if (isHost || isBecomingHost) return; // Already host or becoming host
         
         // Try to connect to the host
         console.log('Attempting to connect to host...');
@@ -121,7 +128,17 @@ function attemptToConnectAsHost() {
             reliable: true
         });
 
+        // Set a timeout - if connection doesn't open within 2 seconds, become host
+        const connectionTimeout = setTimeout(function() {
+            if (!conn.open && !isHost && !isBecomingHost) {
+                console.log('Connection timeout - host not available, becoming host...');
+                conn.close();
+                becomeHost();
+            }
+        }, 2000);
+
         conn.on('open', function() {
+            clearTimeout(connectionTimeout);
             console.log('Connected to host');
             isHost = false;
             hostPeerId = HOST_PEER_ID;
@@ -132,19 +149,30 @@ function attemptToConnectAsHost() {
         });
 
         conn.on('error', function(err) {
-            console.log('Could not connect to host, becoming host...', err);
-            becomeHost();
+            clearTimeout(connectionTimeout);
+            console.log('Connection error, becoming host...', err);
+            if (!isHost && !isBecomingHost) {
+                becomeHost();
+            }
         });
 
         conn.on('close', function() {
-            console.log('Host disconnected');
-            handleHostDisconnect();
+            clearTimeout(connectionTimeout);
+            if (!isHost) {
+                console.log('Host disconnected');
+                handleHostDisconnect();
+            }
         });
     }, 500);
 }
 
 function becomeHost() {
+    if (isBecomingHost || isHost) {
+        return; // Already becoming host or already host
+    }
+    
     console.log('Becoming the host');
+    isBecomingHost = true;
     
     // Close old peer connection
     if (peer) {
@@ -162,6 +190,7 @@ function becomeHost() {
     peer.on('open', function(id) {
         console.log('Host peer opened with ID:', id);
         isHost = true;
+        isBecomingHost = false;
         hostPeerId = HOST_PEER_ID;
         myPeerId = HOST_PEER_ID;
         
@@ -177,6 +206,7 @@ function becomeHost() {
 
     peer.on('error', function(err) {
         console.error('Host peer error:', err);
+        isBecomingHost = false;
         // If ID is taken, wait and retry (someone else became host)
         if (err.type === 'unavailable-id' || err.type === 'id-taken') {
             setTimeout(function() {
