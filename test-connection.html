@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Connection Test</title>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+</head>
+<body>
+    <h1>PeerJS Connection Test</h1>
+    <div id="status">Initializing...</div>
+    <div id="logs" style="font-family: monospace; white-space: pre-wrap; background: #f0f0f0; padding: 10px; margin-top: 20px; max-height: 400px; overflow-y: auto;"></div>
+    
+    <script>
+        const HOST_PEER_ID = 'tadpoles-host';
+        let peer = null;
+        let isHost = false;
+        let isBecomingHost = false;
+        let connectionAttempts = 0;
+        const maxAttempts = 3;
+        
+        const statusDiv = document.getElementById('status');
+        const logsDiv = document.getElementById('logs');
+        
+        function log(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            logsDiv.textContent += `[${timestamp}] ${message}\n`;
+            logsDiv.scrollTop = logsDiv.scrollHeight;
+            console.log(message);
+        }
+        
+        function updateStatus(message) {
+            statusDiv.textContent = message;
+            log(message);
+        }
+        
+        function initializePeer() {
+            const myPeerId = 'test-client-' + Math.random().toString(36).substr(2, 9);
+            updateStatus('Creating peer with ID: ' + myPeerId);
+            
+            peer = new Peer(myPeerId, {
+                host: '0.peerjs.com',
+                port: 443,
+                path: '/',
+                secure: true
+            });
+            
+            peer.on('open', function(id) {
+                log('Peer opened with ID: ' + id);
+                attemptToConnectAsHost();
+            });
+            
+            peer.on('error', function(err) {
+                log('Peer error: ' + JSON.stringify(err));
+                if (err.type === 'peer-unavailable' && err.peer === HOST_PEER_ID) {
+                    log('Host peer unavailable detected, becoming host...');
+                    if (!isHost && !isBecomingHost) {
+                        becomeHost();
+                    }
+                } else if (err.type === 'network') {
+                    if (connectionAttempts < maxAttempts && !isHost && !isBecomingHost) {
+                        setTimeout(function() {
+                            attemptToConnectAsHost();
+                        }, 1000);
+                    }
+                }
+            });
+        }
+        
+        function attemptToConnectAsHost() {
+            if (isHost || isBecomingHost) {
+                log('Already host or becoming host, skipping connection attempt');
+                return;
+            }
+            
+            connectionAttempts++;
+            log(`Attempt ${connectionAttempts}/${maxAttempts}: Trying to connect to host...`);
+            
+            setTimeout(function() {
+                if (isHost || isBecomingHost) return;
+                
+                const conn = peer.connect(HOST_PEER_ID, {
+                    reliable: true
+                });
+                
+                const connectionTimeout = setTimeout(function() {
+                    if (!conn.open && !isHost && !isBecomingHost) {
+                        log('Connection timeout - host not available, becoming host...');
+                        conn.close();
+                        becomeHost();
+                    }
+                }, 2000);
+                
+                conn.on('open', function() {
+                    clearTimeout(connectionTimeout);
+                    updateStatus('✓ SUCCESS: Connected to host!');
+                    log('Connection opened successfully');
+                });
+                
+                conn.on('error', function(err) {
+                    clearTimeout(connectionTimeout);
+                    log('Connection error: ' + JSON.stringify(err));
+                    if (!isHost && !isBecomingHost) {
+                        becomeHost();
+                    }
+                });
+                
+                conn.on('close', function() {
+                    clearTimeout(connectionTimeout);
+                    log('Connection closed');
+                });
+            }, 500);
+        }
+        
+        function becomeHost() {
+            if (isBecomingHost || isHost) {
+                log('Already becoming host or already host');
+                return;
+            }
+            
+            log('Becoming the host...');
+            isBecomingHost = true;
+            
+            if (peer) {
+                peer.destroy();
+            }
+            
+            peer = new Peer(HOST_PEER_ID, {
+                host: '0.peerjs.com',
+                port: 443,
+                path: '/',
+                secure: true
+            });
+            
+            peer.on('open', function(id) {
+                log('Host peer opened with ID: ' + id);
+                isHost = true;
+                isBecomingHost = false;
+                updateStatus('✓ SUCCESS: Became the host!');
+            });
+            
+            peer.on('error', function(err) {
+                log('Host peer error: ' + JSON.stringify(err));
+                isBecomingHost = false;
+                if (err.type === 'unavailable-id' || err.type === 'id-taken') {
+                    log('Host ID taken, someone else is host');
+                    updateStatus('⚠ Host ID already taken (someone else is hosting)');
+                } else {
+                    updateStatus('✗ ERROR: ' + err.type);
+                }
+            });
+            
+            peer.on('connection', function(conn) {
+                log('Incoming connection from: ' + conn.peer);
+                updateStatus('✓ Host is receiving connections!');
+            });
+        }
+        
+        // Start test
+        updateStatus('Starting connection test...');
+        initializePeer();
+        
+        // Set a timeout to show final status
+        setTimeout(function() {
+            if (!isHost && !isBecomingHost) {
+                updateStatus('⚠ Test completed - check logs above');
+            }
+        }, 5000);
+    </script>
+</body>
+</html>
