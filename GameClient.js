@@ -735,6 +735,12 @@ function playSound(soundName) {
 
 function getColors(gs) {
     var playerColorSelect = $('#playerColor');
+    
+    // Don't add colors if they're already added (prevent duplicates)
+    if (playerColorSelect.children().length > 1) {
+        onLoad = false;
+        return;
+    }
 
     var colors = [
         { hex: "#512DA8", name: "Purple" },
@@ -975,6 +981,9 @@ $(document).keyup(function (e) {
 });
 
 $(document).ready(function () {
+    // Initialize color dropdown for both host and client
+    getColors();
+    
     $('#joinGameButton').click(function () {
         var playerColorName = $('#playerColor option:selected').text();
         var playerColorHex = $('#playerColor').val();
